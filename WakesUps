@@ -1,1 +1,119 @@
-txt
+
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog 
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Users Table -->
+    <changeSet id="1" author="dev">
+        <createTable tableName="user">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(100)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="password" type="VARCHAR(100)" />
+            <column name="role" type="VARCHAR(50)" />
+        </createTable>
+    </changeSet>
+
+    <!-- Categories Table -->
+    <changeSet id="2" author="dev">
+        <createTable tableName="category">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(50)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(500)"/>
+            <column name="storage_requirements" type="VARCHAR(500)"/>
+            <column name="is_perishable" type="BOOLEAN"/>
+            <column name="shelf_life" type="INT"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Goods Item Table -->
+    <changeSet id="3" author="dev">
+        <createTable tableName="goods_item">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(100)"/>
+            <column name="quantity" type="INT"/>
+            <column name="unit_of_measure" type="VARCHAR(50)"/>
+            <column name="location" type="VARCHAR(100)"/>
+            <column name="expiry_date" type="DATE"/>
+            <column name="acquisition_date" type="DATE"/>
+            <column name="minimum_stock_level" type="INT"/>
+            <column name="price" type="DECIMAL(10,2)"/>
+            <column name="supplier" type="VARCHAR(100)"/>
+            <column name="status" type="VARCHAR(50)"/>
+
+            <column name="user_id" type="BIGINT"/>
+            <column name="category_id" type="BIGINT"/>
+
+            <addForeignKeyConstraint baseTableName="goods_item" baseColumnNames="user_id"
+                                     referencedTableName="user" referencedColumnNames="id"
+                                     constraintName="fk_goods_item_user"/>
+
+            <addForeignKeyConstraint baseTableName="goods_item" baseColumnNames="category_id"
+                                     referencedTableName="category" referencedColumnNames="id"
+                                     constraintName="fk_goods_item_category"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Goods Review Table -->
+    <changeSet id="4" author="dev">
+        <createTable tableName="goods_review">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="goods_id" type="BIGINT" unique="true"/>
+            <column name="status" type="VARCHAR(20)"/>
+            <column name="comment" type="VARCHAR(500)"/>
+            <column name="review_date" type="DATE"/>
+
+            <addForeignKeyConstraint baseTableName="goods_review" baseColumnNames="goods_id"
+                                     referencedTableName="goods_item" referencedColumnNames="id"
+                                     constraintName="fk_review_goods_item"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Warehouse Table -->
+    <changeSet id="5" author="dev">
+        <createTable tableName="warehouse">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(100)"/>
+            <column name="location" type="VARCHAR(200)"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Inventory Table -->
+    <changeSet id="6" author="dev">
+        <createTable tableName="inventory">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="goods_id" type="BIGINT" unique="true"/>
+            <column name="quantity" type="INT"/>
+            <column name="warehouse_location" type="VARCHAR(200)"/>
+            <column name="date_added" type="DATE"/>
+            <column name="warehouse_id" type="BIGINT"/>
+
+            <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="goods_id"
+                                     referencedTableName="goods_item" referencedColumnNames="id"
+                                     constraintName="fk_inventory_goods_item"/>
+
+            <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="warehouse_id"
+                                     referencedTableName="warehouse" referencedColumnNames="id"
+                                     constraintName="fk_inventory_warehouse"/>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
