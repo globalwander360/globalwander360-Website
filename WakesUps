@@ -1,26 +1,25 @@
-
 <?xml version="1.0" encoding="utf-8"?>
-<databaseChangeLog 
-    xmlns="http://www.liquibase.org/xml/ns/dbchangelog" 
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Users Table -->
+    <!-- User Table -->
     <changeSet id="1" author="dev">
-        <createTable tableName="user">
+        <createTable tableName="app_user">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="email" type="VARCHAR(100)">
                 <constraints unique="true" nullable="false"/>
             </column>
-            <column name="password" type="VARCHAR(100)" />
-            <column name="role" type="VARCHAR(50)" />
+            <column name="password" type="VARCHAR(180)"/>
+            <column name="role" type="VARCHAR(50)"/>
         </createTable>
     </changeSet>
 
-    <!-- Categories Table -->
+    <!-- Category Table -->
     <changeSet id="2" author="dev">
         <createTable tableName="category">
             <column name="id" type="BIGINT" autoIncrement="true">
@@ -36,9 +35,9 @@
         </createTable>
     </changeSet>
 
-    <!-- Goods Item Table -->
+    <!-- Goods Table -->
     <changeSet id="3" author="dev">
-        <createTable tableName="goods_item">
+        <createTable tableName="goods">
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true"/>
             </column>
@@ -52,18 +51,17 @@
             <column name="price" type="DECIMAL(10,2)"/>
             <column name="supplier" type="VARCHAR(100)"/>
             <column name="status" type="VARCHAR(50)"/>
-
             <column name="user_id" type="BIGINT"/>
             <column name="category_id" type="BIGINT"/>
-
-            <addForeignKeyConstraint baseTableName="goods_item" baseColumnNames="user_id"
-                                     referencedTableName="user" referencedColumnNames="id"
-                                     constraintName="fk_goods_item_user"/>
-
-            <addForeignKeyConstraint baseTableName="goods_item" baseColumnNames="category_id"
-                                     referencedTableName="category" referencedColumnNames="id"
-                                     constraintName="fk_goods_item_category"/>
         </createTable>
+
+        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="user_id"
+                                 referencedTableName="app_user" referencedColumnNames="id"
+                                 constraintName="fk_goods_user"/>
+
+        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="category_id"
+                                 referencedTableName="category" referencedColumnNames="id"
+                                 constraintName="fk_goods_category"/>
     </changeSet>
 
     <!-- Goods Review Table -->
@@ -76,11 +74,11 @@
             <column name="status" type="VARCHAR(20)"/>
             <column name="comment" type="VARCHAR(500)"/>
             <column name="review_date" type="DATE"/>
-
-            <addForeignKeyConstraint baseTableName="goods_review" baseColumnNames="goods_id"
-                                     referencedTableName="goods_item" referencedColumnNames="id"
-                                     constraintName="fk_review_goods_item"/>
         </createTable>
+
+        <addForeignKeyConstraint baseTableName="goods_review" baseColumnNames="goods_id"
+                                 referencedTableName="goods" referencedColumnNames="id"
+                                 constraintName="fk_review_goods"/>
     </changeSet>
 
     <!-- Warehouse Table -->
@@ -105,15 +103,414 @@
             <column name="warehouse_location" type="VARCHAR(200)"/>
             <column name="date_added" type="DATE"/>
             <column name="warehouse_id" type="BIGINT"/>
-
-            <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="goods_id"
-                                     referencedTableName="goods_item" referencedColumnNames="id"
-                                     constraintName="fk_inventory_goods_item"/>
-
-            <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="warehouse_id"
-                                     referencedTableName="warehouse" referencedColumnNames="id"
-                                     constraintName="fk_inventory_warehouse"/>
         </createTable>
+
+        <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="goods_id"
+                                 referencedTableName="goods" referencedColumnNames="id"
+                                 constraintName="fk_inventory_goods"/>
+
+        <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="warehouse_id"
+                                 referencedTableName="warehouse" referencedColumnNames="id"
+                                 constraintName="fk_inventory_warehouse"/>
     </changeSet>
 
 </databaseChangeLog>
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- User Table -->
+    <changeSet id="1" author="dev">
+        <createTable tableName="app_user">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(100)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="password" type="VARCHAR(180)"/>
+            <column name="role" type="VARCHAR(50)"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Category Table -->
+    <changeSet id="2" author="dev">
+        <createTable tableName="category">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(50)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(500)"/>
+            <column name="storage_requirements" type="VARCHAR(500)"/>
+            <column name="is_perishable" type="BOOLEAN"/>
+            <column name="shelf_life" type="INT"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Goods Table -->
+    <changeSet id="3" author="dev">
+        <createTable tableName="goods">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(100)"/>
+            <column name="quantity" type="INT"/>
+            <column name="unit_of_measure" type="VARCHAR(50)"/>
+            <column name="location" type="VARCHAR(100)"/>
+            <column name="expiry_date" type="DATE"/>
+            <column name="acquisition_date" type="DATE"/>
+            <column name="minimum_stock_level" type="INT"/>
+            <column name="price" type="DECIMAL(10,2)"/>
+            <column name="supplier" type="VARCHAR(100)"/>
+            <column name="status" type="VARCHAR(50)"/>
+            <column name="user_id" type="BIGINT"/>
+            <column name="category_id" type="BIGINT"/>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="user_id"
+                                 referencedTableName="app_user" referencedColumnNames="id"
+                                 constraintName="fk_goods_user"/>
+
+        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="category_id"
+                                 referencedTableName="category" referencedColumnNames="id"
+                                 constraintName="fk_goods_category"/>
+    </changeSet>
+</databaseChangeLog>
+
+
+
+package org.policy.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "app_user")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 100)
+    private String email;
+
+    private String password;
+
+    private String role;
+}
+
+
+package org.policy.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "category")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Category {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String name;
+
+    private String description;
+
+    @Column(name = "storage_requirements")
+    private String storageRequirements;
+
+    @Column(name = "is_perishable")
+    private Boolean isPerishable;
+
+    @Column(name = "shelf_life")
+    private Integer shelfLife;
+}
+
+
+package org.policy.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "goods")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Goods {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    private Integer quantity;
+
+    @Column(name = "unit_of_measure")
+    private String unitOfMeasure;
+
+    private String location;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
+
+    @Column(name = "acquisition_date")
+    private LocalDate acquisitionDate;
+
+    @Column(name = "minimum_stock_level")
+    private Integer minimumStockLevel;
+
+    private BigDecimal price;
+
+    private String supplier;
+
+    private String status;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+}
+
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- User Table -->
+    <changeSet id="1" author="dev">
+        <createTable tableName="app_user">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(100)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="password" type="VARCHAR(180)"/>
+            <column name="role" type="VARCHAR(50)"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Category Table -->
+    <changeSet id="2" author="dev">
+        <createTable tableName="category">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(50)">
+                <constraints unique="true" nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(500)"/>
+            <column name="storage_requirements" type="VARCHAR(500)"/>
+            <column name="is_perishable" type="BOOLEAN"/>
+            <column name="shelf_life" type="INT"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Goods Table -->
+    <changeSet id="3" author="dev">
+        <createTable tableName="goods">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(100)"/>
+            <column name="quantity" type="INT"/>
+            <column name="unit_of_measure" type="VARCHAR(50)"/>
+            <column name="location" type="VARCHAR(100)"/>
+            <column name="expiry_date" type="DATE"/>
+            <column name="acquisition_date" type="DATE"/>
+            <column name="minimum_stock_level" type="INT"/>
+            <column name="price" type="DECIMAL(10,2)"/>
+            <column name="supplier" type="VARCHAR(100)"/>
+            <column name="status" type="VARCHAR(50)"/>
+            <column name="user_id" type="BIGINT"/>
+            <column name="category_id" type="BIGINT"/>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="user_id"
+                                 referencedTableName="app_user" referencedColumnNames="id"
+                                 constraintName="fk_goods_user"/>
+
+        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="category_id"
+                                 referencedTableName="category" referencedColumnNames="id"
+                                 constraintName="fk_goods_category"/>
+    </changeSet>
+
+    <!-- Goods Review Table -->
+    <changeSet id="4" author="dev">
+        <createTable tableName="goods_review">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="goods_id" type="BIGINT" unique="true"/>
+            <column name="status" type="VARCHAR(20)"/>
+            <column name="comment" type="VARCHAR(500)"/>
+            <column name="review_date" type="DATE"/>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="goods_review" baseColumnNames="goods_id"
+                                 referencedTableName="goods" referencedColumnNames="id"
+                                 constraintName="fk_review_goods"/>
+    </changeSet>
+
+    <!-- Warehouse Table -->
+    <changeSet id="5" author="dev">
+        <createTable tableName="warehouse">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(100)"/>
+            <column name="location" type="VARCHAR(200)"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Inventory Table -->
+    <changeSet id="6" author="dev">
+        <createTable tableName="inventory">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="goods_id" type="BIGINT" unique="true"/>
+            <column name="quantity" type="INT"/>
+            <column name="warehouse_location" type="VARCHAR(200)"/>
+            <column name="date_added" type="DATE"/>
+            <column name="warehouse_id" type="BIGINT"/>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="goods_id"
+                                 referencedTableName="goods" referencedColumnNames="id"
+                                 constraintName="fk_inventory_goods"/>
+
+        <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="warehouse_id"
+                                 referencedTableName="warehouse" referencedColumnNames="id"
+                                 constraintName="fk_inventory_warehouse"/>
+    </changeSet>
+
+</databaseChangeLog>
+
+
+
+package org.policy.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "goods_review")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class GoodsReview {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToOne
+    @JoinColumn(name = "goods_id", unique = true)
+    private Goods goods;
+
+    private String status;
+
+    private String comment;
+
+    @Column(name = "review_date")
+    private LocalDate reviewDate;
+}
+
+
+
+package org.policy.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "warehouse")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Warehouse {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    private String location;
+}
+
+
+package org.policy.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "inventory")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Inventory {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToOne
+    @JoinColumn(name = "goods_id", unique = true)
+    private Goods goods;
+
+    private Integer quantity;
+
+    @Column(name = "warehouse_location")
+    private String warehouseLocation;
+
+    @Column(name = "date_added")
+    private LocalDate dateAdded;
+
+    @ManyToOne
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
+}
+
+
+
