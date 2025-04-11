@@ -159,4 +159,141 @@ public class GoodsMapper {
                 .build();
     }
 
-    public Goods
+    public GoodsDTO toDto(Goods goods) {
+        return GoodsDTO.builder()
+                .id(goods.getId())
+                .name(goods.getName())
+                .quantity(goods.getQuantity())
+                .unitOfMeasure(goods.getUnitOfMeasure())
+                .location(goods.getLocation())
+                .expiryDate(goods.getExpiryDate())
+                .acquisitionDate(goods.getAcquisitionDate())
+                .minimumStockLevel(goods.getMinimumStockLevel())
+                .price(goods.getPrice())
+                .supplier(goods.getSupplier())
+                .status(goods.getStatus())
+                .categoryId(goods.getCategory().getId())
+                .userId(goods.getUser().getId())
+                .build();
+    }
+}
+
+
+---
+
+5. GoodsService.java
+
+package org.policy.service;
+
+import org.policy.dto.GoodsDTO;
+import java.util.List;
+
+public interface GoodsService {
+    GoodsDTO createGoods(GoodsDTO dto);
+    List<GoodsDTO> getMyGoods(Long userId);
+    GoodsDTO findById(Long id);
+}
+
+
+---
+
+6. GoodsServiceImpl.java
+
+package org.policy.service.impl;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.GoodsDTO;
+import org.policy.entity.Category;
+import org.policy.entity.Goods;
+import org.policy.entity.AppUser;
+import org.policy.mapper.GoodsMapper;
+import org.policy.repository.CategoryRepository;
+import org.policy.repository.GoodsRepository;
+import org.policy.repository.UserRepository;
+import org.policy.service.GoodsService;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class GoodsServiceImpl implements GoodsService {
+
+    private final GoodsRepository goodsRepository;
+    private final GoodsMapper goodsMapper;
+    private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
+
+    @Override
+    public GoodsDTO createGoods(GoodsDTO dto) {
+        AppUser user = userRepository.findById(dto.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Category category = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        Goods goods = goodsMapper.toEntity(dto, category, user);
+        goods.setStatus("PENDING");
+
+        return goodsMapper.toDto(goodsRepository.save(goods));
+    }
+
+    @Override
+    public List<GoodsDTO> getMyGoods(Long userId) {
+        return goodsRepository.findByUserId(userId)
+                .stream()
+                .map(goodsMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public GoodsDTO findById(Long id) {
+        return goodsRepository.findById(id)
+                .map(goodsMapper::toDto)
+                .orElseThrow(() -> new RuntimeException("Goods not found"));
+    }
+}
+
+
+---
+
+7. GoodsController.java
+
+package org.policy.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.GoodsDTO;
+import org.policy.service.GoodsService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/goods")
+@RequiredArgsConstructor
+public class GoodsController {
+
+    private final GoodsService goodsService;
+
+    @PostMapping
+    public ResponseEntity<GoodsDTO> createGoods(@RequestBody GoodsDTO dto) {
+        return ResponseEntity.ok(goodsService.createGoods(dto));
+    }
+
+    @GetMapping("/my/{userId}")
+    public ResponseEntity<List<GoodsDTO>> getMyGoods(@PathVariable Long userId) {
+        return ResponseEntity.ok(goodsService.getMyGoods(userId));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<GoodsDTO> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(goodsService.findById(id));
+    }
+}
+
+
+---
+
+Let me know if you want the Angular structure for Day 3 or if you need help with front-end integration!
+
