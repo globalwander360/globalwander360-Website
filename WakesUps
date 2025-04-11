@@ -1,9 +1,9 @@
-Here’s the complete backend structure and all remaining code for Day 3: Goods Registration (User).
+Here's the complete backend structure and full source code for Day 4: Category Management (Admin). This includes the remaining components: DTO, Mapper, Service, Controller.
 
 
 ---
 
-Day 3 Folder Structure
+Folder Structure
 
 src
 └── main
@@ -11,95 +11,73 @@ src
         └── org
             └── policy
                 ├── controller
-                │   └── GoodsController.java
+                │   └── CategoryController.java
                 ├── dto
-                │   └── GoodsDTO.java
+                │   └── CategoryDTO.java
+                ├── entity
+                │   └── Category.java         // already created
                 ├── mapper
-                │   └── GoodsMapper.java
+                │   └── CategoryMapper.java
                 ├── repository
-                │   └── GoodsRepository.java
+                │   └── CategoryRepository.java
                 └── service
-                    └── GoodsService.java
+                    └── CategoryService.java
 
 
 ---
 
-1. GoodsDTO.java
+1. CategoryDTO.java
 
 package org.policy.dto;
 
 import lombok.*;
-import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GoodsDTO {
+public class CategoryDTO {
     private Long id;
     private String name;
-    private Long categoryId;
-    private Integer quantity;
-    private String unitOfMeasure;
-    private String location;
-    private LocalDate expiryDate;
-    private LocalDate acquisitionDate;
-    private Integer minimumStockLevel;
-    private Double price;
-    private String supplier;
-    private String status;
-    private Long userId;
+    private String description;
+    private String storageRequirements;
+    private Boolean isPerishable;
+    private Integer shelfLife;
 }
 
 
 ---
 
-2. GoodsMapper.java
+2. CategoryMapper.java
 
 package org.policy.mapper;
 
-import org.policy.dto.GoodsDTO;
+import org.policy.dto.CategoryDTO;
 import org.policy.entity.Category;
-import org.policy.entity.Goods;
-import org.policy.entity.AppUser;
 import org.springframework.stereotype.Component;
 
 @Component
-public class GoodsMapper {
+public class CategoryMapper {
 
-    public GoodsDTO toDTO(Goods goods) {
-        return GoodsDTO.builder()
-                .id(goods.getId())
-                .name(goods.getName())
-                .categoryId(goods.getCategory().getId())
-                .quantity(goods.getQuantity())
-                .unitOfMeasure(goods.getUnitOfMeasure())
-                .location(goods.getLocation())
-                .expiryDate(goods.getExpiryDate())
-                .acquisitionDate(goods.getAcquisitionDate())
-                .minimumStockLevel(goods.getMinimumStockLevel())
-                .price(goods.getPrice())
-                .supplier(goods.getSupplier())
-                .status(goods.getStatus())
-                .userId(goods.getUser().getId())
+    public CategoryDTO toDTO(Category category) {
+        return CategoryDTO.builder()
+                .id(category.getId())
+                .name(category.getName())
+                .description(category.getDescription())
+                .storageRequirements(category.getStorageRequirements())
+                .isPerishable(category.getIsPerishable())
+                .shelfLife(category.getShelfLife())
                 .build();
     }
 
-    public Goods toEntity(GoodsDTO dto, AppUser user, Category category) {
-        return Goods.builder()
+    public Category toEntity(CategoryDTO dto) {
+        return Category.builder()
                 .id(dto.getId())
                 .name(dto.getName())
-                .category(category)
-                .quantity(dto.getQuantity())
-                .unitOfMeasure(dto.getUnitOfMeasure())
-                .location(dto.getLocation())
-                .expiryDate(dto.getExpiryDate())
-                .acquisitionDate(dto.getAcquisitionDate())
-                .minimumStockLevel(dto.getMinimumStockLevel())
-                .price(dto.getPrice())
-                .supplier(dto.getSupplier())
-                .status("PENDING")
-                .user(user)
+                .description(dto.getDescription())
+                .storageRequirements(dto.getStorageRequirements())
+                .isPerishable(dto.getIsPerishable())
+                .shelfLife(dto.getShelfLife())
                 .build();
     }
 }
@@ -107,35 +85,31 @@ public class GoodsMapper {
 
 ---
 
-3. GoodsRepository.java
+3. CategoryRepository.java
 
 package org.policy.repository;
 
-import org.policy.entity.Goods;
-import org.policy.entity.AppUser;
+import org.policy.entity.Category;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
+import java.util.Optional;
 
-public interface GoodsRepository extends JpaRepository<Goods, Long> {
-    List<Goods> findByUser(AppUser user);
+public interface CategoryRepository extends JpaRepository<Category, Long> {
+    Optional<Category> findByName(String name);
+    boolean existsByName(String name);
 }
 
 
 ---
 
-4. GoodsService.java
+4. CategoryService.java
 
 package org.policy.service;
 
-import org.policy.dto.GoodsDTO;
-import org.policy.entity.AppUser;
+import org.policy.dto.CategoryDTO;
 import org.policy.entity.Category;
-import org.policy.entity.Goods;
-import org.policy.mapper.GoodsMapper;
-import org.policy.repository.AppUserRepository;
+import org.policy.mapper.CategoryMapper;
 import org.policy.repository.CategoryRepository;
-import org.policy.repository.GoodsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -143,37 +117,26 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class GoodsService {
-
-    @Autowired
-    private GoodsRepository goodsRepository;
-
-    @Autowired
-    private AppUserRepository userRepository;
+public class CategoryService {
 
     @Autowired
     private CategoryRepository categoryRepository;
 
     @Autowired
-    private GoodsMapper goodsMapper;
+    private CategoryMapper categoryMapper;
 
-    public GoodsDTO createGoods(GoodsDTO dto) {
-        AppUser user = userRepository.findById(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Category category = categoryRepository.findById(dto.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-
-        Goods goods = goodsMapper.toEntity(dto, user, category);
-        return goodsMapper.toDTO(goodsRepository.save(goods));
+    public CategoryDTO createCategory(CategoryDTO dto) {
+        if (categoryRepository.existsByName(dto.getName())) {
+            throw new RuntimeException("Category name must be unique");
+        }
+        Category category = categoryMapper.toEntity(dto);
+        return categoryMapper.toDTO(categoryRepository.save(category));
     }
 
-    public List<GoodsDTO> getGoodsByUser(Long userId) {
-        AppUser user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        return goodsRepository.findByUser(user)
+    public List<CategoryDTO> getAllCategories() {
+        return categoryRepository.findAll()
                 .stream()
-                .map(goodsMapper::toDTO)
+                .map(categoryMapper::toDTO)
                 .collect(Collectors.toList());
     }
 }
@@ -181,12 +144,12 @@ public class GoodsService {
 
 ---
 
-5. GoodsController.java
+5. CategoryController.java
 
 package org.policy.controller;
 
-import org.policy.dto.GoodsDTO;
-import org.policy.service.GoodsService;
+import org.policy.dto.CategoryDTO;
+import org.policy.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -194,34 +157,34 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/goods")
+@RequestMapping("/api/categories")
 @CrossOrigin(origins = "*")
-public class GoodsController {
+public class CategoryController {
 
     @Autowired
-    private GoodsService goodsService;
+    private CategoryService categoryService;
 
     @PostMapping
-    public ResponseEntity<GoodsDTO> createGoods(@RequestBody GoodsDTO dto) {
-        return ResponseEntity.ok(goodsService.createGoods(dto));
+    public ResponseEntity<CategoryDTO> createCategory(@RequestBody CategoryDTO dto) {
+        return ResponseEntity.ok(categoryService.createCategory(dto));
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<GoodsDTO>> getGoodsByUser(@PathVariable Long userId) {
-        return ResponseEntity.ok(goodsService.getGoodsByUser(userId));
+    @GetMapping
+    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
+        return ResponseEntity.ok(categoryService.getAllCategories());
     }
 }
 
 
 ---
 
-Let me know if you need:
+Let me know if you also want:
 
-Angular form code for Day 3
+Angular frontend form + integration
 
-Validation annotations or custom error messages
+Update/delete APIs
 
-File for AppUserRepository.java or any shared resources
+Custom exceptions or validation handling
 
 
-If everything is working well now, I’ll prepare you for Day 5: Quality Check.
+Ready to move on to Day 5: Quality Check (Logistics Coordinator)?
