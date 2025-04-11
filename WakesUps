@@ -1,216 +1,116 @@
-Great! Here’s the Day 3 folder and file structure for the backend (Spring Boot) implementation of the Goods Registration functionality.
+Great! For Day 4: Category Management (Admin), the goal is to allow Admin users to create and manage categories. This includes:
+
+Backend:
+
+Category DTO
+
+Category Mapper
+
+Category Service
+
+Category Controller
+
+CategoryRepository (already created)
+
+
+
+Here’s the complete Day 4 project folder structure and code for the backend:
 
 
 ---
 
 Folder Structure (Backend - Spring Boot)
 
-src
-└── main
-    └── java
-        └── org
-            └── policy
-                ├── controller
-                │   └── GoodsController.java
-                ├── dto
-                │   └── GoodsDTO.java
-                ├── entity
-                │   └── Goods.java
-                ├── mapper
-                │   └── GoodsMapper.java
-                ├── repository
-                │   └── GoodsRepository.java
-                └── service
-                    ├── GoodsService.java
-                    └── impl
-                        └── GoodsServiceImpl.java
+src/main/java/org/policy
+│
+├── controller
+│   └── CategoryController.java
+│
+├── dto
+│   └── CategoryDTO.java
+│
+├── entity
+│   └── Category.java        (Already Created)
+│
+├── mapper
+│   └── CategoryMapper.java
+│
+├── repository
+│   └── CategoryRepository.java  (Already Created)
+│
+├── service
+│   └── CategoryService.java
+│
+└── InventoryManagementApplication.java
 
 
 ---
 
-1. GoodsDTO.java
+1. CategoryDTO.java
 
 package org.policy.dto;
 
-import lombok.*;
-import java.time.LocalDate;
+import lombok.Data;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class GoodsDTO {
+public class CategoryDTO {
     private Long id;
     private String name;
-    private Integer quantity;
-    private String unitOfMeasure;
-    private String location;
-    private LocalDate expiryDate;
-    private LocalDate acquisitionDate;
-    private Integer minimumStockLevel;
-    private Double price;
-    private String supplier;
-    private String status;
-    private Long categoryId;
-    private Long userId;
+    private String description;
+    private String storageRequirements;
+    private Boolean isPerishable;
+    private Integer shelfLife;
 }
 
 
 ---
 
-2. Goods.java
-
-(Assuming already created, but restating for context)
-
-package org.policy.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-import java.time.LocalDate;
-
-@Entity
-@Table(name = "goods")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Goods {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String name;
-    private Integer quantity;
-
-    @Column(name = "unit_of_measure")
-    private String unitOfMeasure;
-
-    private String location;
-
-    @Column(name = "expiry_date")
-    private LocalDate expiryDate;
-
-    @Column(name = "acquisition_date")
-    private LocalDate acquisitionDate;
-
-    @Column(name = "minimum_stock_level")
-    private Integer minimumStockLevel;
-
-    private Double price;
-    private String supplier;
-    private String status;
-
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private AppUser user;
-
-    @ManyToOne
-    @JoinColumn(name = "category_id")
-    private Category category;
-}
-
-
----
-
-3. GoodsRepository.java
-
-package org.policy.repository;
-
-import org.policy.entity.Goods;
-import org.springframework.data.jpa.repository.JpaRepository;
-import java.util.List;
-
-public interface GoodsRepository extends JpaRepository<Goods, Long> {
-    List<Goods> findByUserId(Long userId);
-}
-
-
----
-
-4. GoodsMapper.java
+2. CategoryMapper.java
 
 package org.policy.mapper;
 
-import org.policy.dto.GoodsDTO;
+import org.policy.dto.CategoryDTO;
 import org.policy.entity.Category;
-import org.policy.entity.Goods;
-import org.policy.entity.AppUser;
 import org.springframework.stereotype.Component;
 
 @Component
-public class GoodsMapper {
+public class CategoryMapper {
 
-    public Goods toEntity(GoodsDTO dto, Category category, AppUser user) {
-        return Goods.builder()
+    public Category toEntity(CategoryDTO dto) {
+        return Category.builder()
                 .id(dto.getId())
                 .name(dto.getName())
-                .quantity(dto.getQuantity())
-                .unitOfMeasure(dto.getUnitOfMeasure())
-                .location(dto.getLocation())
-                .expiryDate(dto.getExpiryDate())
-                .acquisitionDate(dto.getAcquisitionDate())
-                .minimumStockLevel(dto.getMinimumStockLevel())
-                .price(dto.getPrice())
-                .supplier(dto.getSupplier())
-                .status(dto.getStatus())
-                .category(category)
-                .user(user)
+                .description(dto.getDescription())
+                .storageRequirements(dto.getStorageRequirements())
+                .isPerishable(dto.getIsPerishable())
+                .shelfLife(dto.getShelfLife())
                 .build();
     }
 
-    public GoodsDTO toDto(Goods goods) {
-        return GoodsDTO.builder()
-                .id(goods.getId())
-                .name(goods.getName())
-                .quantity(goods.getQuantity())
-                .unitOfMeasure(goods.getUnitOfMeasure())
-                .location(goods.getLocation())
-                .expiryDate(goods.getExpiryDate())
-                .acquisitionDate(goods.getAcquisitionDate())
-                .minimumStockLevel(goods.getMinimumStockLevel())
-                .price(goods.getPrice())
-                .supplier(goods.getSupplier())
-                .status(goods.getStatus())
-                .categoryId(goods.getCategory().getId())
-                .userId(goods.getUser().getId())
-                .build();
+    public CategoryDTO toDto(Category entity) {
+        CategoryDTO dto = new CategoryDTO();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setDescription(entity.getDescription());
+        dto.setStorageRequirements(entity.getStorageRequirements());
+        dto.setIsPerishable(entity.getIsPerishable());
+        dto.setShelfLife(entity.getShelfLife());
+        return dto;
     }
 }
 
 
 ---
 
-5. GoodsService.java
+3. CategoryService.java
 
 package org.policy.service;
 
-import org.policy.dto.GoodsDTO;
-import java.util.List;
-
-public interface GoodsService {
-    GoodsDTO createGoods(GoodsDTO dto);
-    List<GoodsDTO> getMyGoods(Long userId);
-    GoodsDTO findById(Long id);
-}
-
-
----
-
-6. GoodsServiceImpl.java
-
-package org.policy.service.impl;
-
 import lombok.RequiredArgsConstructor;
-import org.policy.dto.GoodsDTO;
+import org.policy.dto.CategoryDTO;
 import org.policy.entity.Category;
-import org.policy.entity.Goods;
-import org.policy.entity.AppUser;
-import org.policy.mapper.GoodsMapper;
+import org.policy.mapper.CategoryMapper;
 import org.policy.repository.CategoryRepository;
-import org.policy.repository.GoodsRepository;
-import org.policy.repository.UserRepository;
-import org.policy.service.GoodsService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -218,82 +118,96 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class GoodsServiceImpl implements GoodsService {
+public class CategoryService {
 
-    private final GoodsRepository goodsRepository;
-    private final GoodsMapper goodsMapper;
-    private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final CategoryMapper categoryMapper;
 
-    @Override
-    public GoodsDTO createGoods(GoodsDTO dto) {
-        AppUser user = userRepository.findById(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        Category category = categoryRepository.findById(dto.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-
-        Goods goods = goodsMapper.toEntity(dto, category, user);
-        goods.setStatus("PENDING");
-
-        return goodsMapper.toDto(goodsRepository.save(goods));
+    public CategoryDTO create(CategoryDTO dto) {
+        Category category = categoryMapper.toEntity(dto);
+        return categoryMapper.toDto(categoryRepository.save(category));
     }
 
-    @Override
-    public List<GoodsDTO> getMyGoods(Long userId) {
-        return goodsRepository.findByUserId(userId)
+    public List<CategoryDTO> getAll() {
+        return categoryRepository.findAll()
                 .stream()
-                .map(goodsMapper::toDto)
+                .map(categoryMapper::toDto)
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public GoodsDTO findById(Long id) {
-        return goodsRepository.findById(id)
-                .map(goodsMapper::toDto)
-                .orElseThrow(() -> new RuntimeException("Goods not found"));
+    public CategoryDTO getById(Long id) {
+        return categoryRepository.findById(id)
+                .map(categoryMapper::toDto)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+    }
+
+    public void delete(Long id) {
+        categoryRepository.deleteById(id);
+    }
+
+    public CategoryDTO update(Long id, CategoryDTO dto) {
+        Category existing = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+        existing.setName(dto.getName());
+        existing.setDescription(dto.getDescription());
+        existing.setStorageRequirements(dto.getStorageRequirements());
+        existing.setIsPerishable(dto.getIsPerishable());
+        existing.setShelfLife(dto.getShelfLife());
+        return categoryMapper.toDto(categoryRepository.save(existing));
     }
 }
 
 
 ---
 
-7. GoodsController.java
+4. CategoryController.java
 
 package org.policy.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.policy.dto.GoodsDTO;
-import org.policy.service.GoodsService;
+import org.policy.dto.CategoryDTO;
+import org.policy.service.CategoryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/goods")
+@RequestMapping("/api/categories")
 @RequiredArgsConstructor
-public class GoodsController {
+public class CategoryController {
 
-    private final GoodsService goodsService;
+    private final CategoryService categoryService;
 
     @PostMapping
-    public ResponseEntity<GoodsDTO> createGoods(@RequestBody GoodsDTO dto) {
-        return ResponseEntity.ok(goodsService.createGoods(dto));
+    public ResponseEntity<CategoryDTO> create(@RequestBody CategoryDTO dto) {
+        return ResponseEntity.ok(categoryService.create(dto));
     }
 
-    @GetMapping("/my/{userId}")
-    public ResponseEntity<List<GoodsDTO>> getMyGoods(@PathVariable Long userId) {
-        return ResponseEntity.ok(goodsService.getMyGoods(userId));
+    @GetMapping
+    public ResponseEntity<List<CategoryDTO>> getAll() {
+        return ResponseEntity.ok(categoryService.getAll());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<GoodsDTO> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(goodsService.findById(id));
+    public ResponseEntity<CategoryDTO> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getById(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<CategoryDTO> update(@PathVariable Long id, @RequestBody CategoryDTO dto) {
+        return ResponseEntity.ok(categoryService.update(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        categoryService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }
 
 
 ---
 
-Let me know if you want the Angular structure for Day 3 or if you need help with front-end integration!
+Let me know when you're ready for the Angular frontend part of Day 4 (Admin UI for Category form and listing with PrimeNG & Reactive Forms).
 
