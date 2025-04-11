@@ -1,270 +1,170 @@
-src/
-└── main/
-    ├── java/com/example/inventory/
-    │   ├── controller/
-    │   │   ├── GoodsController.java
-    │   │   └── CategoryController.java
-    │   ├── dto/
-    │   │   ├── GoodsDTO.java
-    │   │   └── CategoryDTO.java
-    │   ├── entity/
-    │   │   ├── Goods.java
-    │   │   └── Category.java
-    │   ├── mapper/
-    │   │   ├── GoodsMapper.java
-    │   │   └── CategoryMapper.java
-    │   ├── repository/
-    │   │   ├── GoodsRepository.java
-    │   │   └── CategoryRepository.java
-    │   ├── service/
-    │   │   ├── GoodsService.java
-    │   │   └── CategoryService.java
-    │   └── InventoryManagementApplication.java
-    └── test/
-        └── java/com/example/inventory/
-            └── service/
-                └── GoodsServiceTest.java
+1. CategoryMapper (missing piece)
 
 
-// GoodsRepository.java
-package com.example.inventory.repository;
+2. Fixes in:
 
-import com.example.inventory.entity.Goods;
-import org.springframework.data.jpa.repository.JpaRepository;
+GoodsMapper (for getExpiryDate, getAcquisitionDate, getPrice)
 
-public interface GoodsRepository extends JpaRepository<Goods, Long> {
-}
+GoodsService (add toEntity, findById)
 
-// CategoryRepository.java
-package com.example.inventory.repository;
-
-import com.example.inventory.entity.Category;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface CategoryRepository extends JpaRepository<Category, Long> {
-}
-
-
-// GoodsDTO.java
-package com.example.inventory.dto;
-
-import lombok.Data;
-import java.util.Date;
-
-@Data
-public class GoodsDTO {
-    private Long id;
-    private String name;
-    private Integer quantity;
-    private String unitOfMeasure;
-    private String location;
-    private Date expiryDate;
-    private Date acquisitionDate;
-    private Integer minimumStockLevel;
-    private Double price;
-    private String supplier;
-    private String status;
-    private Long userId;
-    private Long categoryId;
-}
+Test class fixes (mock, when, findById, assertEquals, getArgument)
 
 
 
-// GoodsMapper.java
+
+
+---
+
+1. CategoryMapper.java
+
 package com.example.inventory.mapper;
 
-import com.example.inventory.dto.GoodsDTO;
-import com.example.inventory.entity.Goods;
+import com.example.inventory.dto.CategoryDTO;
+import com.example.inventory.entity.Category;
 import org.springframework.stereotype.Component;
 
 @Component
-public class GoodsMapper {
-    public GoodsDTO toDto(Goods goods) {
-        GoodsDTO dto = new GoodsDTO();
-        dto.setId(goods.getId());
-        dto.setName(goods.getName());
-        dto.setQuantity(goods.getQuantity());
-        dto.setUnitOfMeasure(goods.getUnitOfMeasure());
-        dto.setLocation(goods.getLocation());
-        dto.setExpiryDate(goods.getExpiryDate());
-        dto.setAcquisitionDate(goods.getAcquisitionDate());
-        dto.setMinimumStockLevel(goods.getMinimumStockLevel());
-        dto.setPrice(goods.getPrice());
-        dto.setSupplier(goods.getSupplier());
-        dto.setStatus(goods.getStatus());
-        dto.setUserId(goods.getUser().getId());
-        dto.setCategoryId(goods.getCategory().getId());
+public class CategoryMapper {
+
+    public CategoryDTO toDto(Category category) {
+        if (category == null) return null;
+        CategoryDTO dto = new CategoryDTO();
+        dto.setId(category.getId());
+        dto.setName(category.getName());
+        dto.setDescription(category.getDescription());
+        dto.setStorageRequirements(category.getStorageRequirements());
+        dto.setIsPerishable(category.getIsPerishable());
+        dto.setShelfLife(category.getShelfLife());
         return dto;
     }
 
-    public Goods toEntity(GoodsDTO dto) {
-        Goods goods = new Goods();
-        goods.setId(dto.getId());
-        goods.setName(dto.getName());
-        goods.setQuantity(dto.getQuantity());
-        goods.setUnitOfMeasure(dto.getUnitOfMeasure());
-        goods.setLocation(dto.getLocation());
-        goods.setExpiryDate(dto.getExpiryDate());
-        goods.setAcquisitionDate(dto.getAcquisitionDate());
-        goods.setMinimumStockLevel(dto.getMinimumStockLevel());
-        goods.setPrice(dto.getPrice());
-        goods.setSupplier(dto.getSupplier());
-        goods.setStatus(dto.getStatus());
-        return goods;
+    public Category toEntity(CategoryDTO dto) {
+        if (dto == null) return null;
+        Category category = new Category();
+        category.setId(dto.getId());
+        category.setName(dto.getName());
+        category.setDescription(dto.getDescription());
+        category.setStorageRequirements(dto.getStorageRequirements());
+        category.setIsPerishable(dto.getIsPerishable());
+        category.setShelfLife(dto.getShelfLife());
+        return category;
     }
 }
 
 
+---
+
+2. Fix GoodsMapper.java
+
+Make sure your entity class has proper getters: getExpiryDate(), getAcquisitionDate(), getPrice().
+
+If not, update your Goods entity or adjust the GoodsMapper like this:
+
+public GoodsDTO toDto(Goods goods) {
+    if (goods == null) return null;
+    GoodsDTO dto = new GoodsDTO();
+    dto.setId(goods.getId());
+    dto.setName(goods.getName());
+    dto.setQuantity(goods.getQuantity());
+    dto.setUnitOfMeasure(goods.getUnitOfMeasure());
+    dto.setLocation(goods.getLocation());
+    dto.setExpiryDate(goods.getExpiryDate());
+    dto.setAcquisitionDate(goods.getAcquisitionDate());
+    dto.setMinimumStockLevel(goods.getMinimumStockLevel());
+    dto.setPrice(goods.getPrice());
+    dto.setSupplier(goods.getSupplier());
+    dto.setStatus(goods.getStatus());
+    // Map category/user if needed
+    return dto;
+}
+
+If you're getting errors, check:
+
+Entity imports (java.time.LocalDate, BigDecimal)
+
+Whether @Getter/@Setter from Lombok is missing or manually written incorrectly
 
 
-// CategoryDTO.java
-package com.example.inventory.dto;
 
-import lombok.Data;
+---
 
-@Data
-public class CategoryDTO {
-    private Long id;
-    private String name;
-    private String description;
-    private String storageRequirements;
-    private Boolean isPerishable;
-    private Integer shelfLife;
+3. Fix GoodsService.java
+
+Add toEntity method inside GoodsMapper if missing:
+
+public Goods toEntity(GoodsDTO dto) {
+    if (dto == null) return null;
+    Goods goods = new Goods();
+    goods.setId(dto.getId());
+    goods.setName(dto.getName());
+    goods.setQuantity(dto.getQuantity());
+    goods.setUnitOfMeasure(dto.getUnitOfMeasure());
+    goods.setLocation(dto.getLocation());
+    goods.setExpiryDate(dto.getExpiryDate());
+    goods.setAcquisitionDate(dto.getAcquisitionDate());
+    goods.setMinimumStockLevel(dto.getMinimumStockLevel());
+    goods.setPrice(dto.getPrice());
+    goods.setSupplier(dto.getSupplier());
+    goods.setStatus(dto.getStatus());
+    return goods;
+}
+
+Add findById logic in GoodsService:
+
+public GoodsDTO findById(Long id) {
+    Goods goods = goodsRepository.findById(id)
+        .orElseThrow(() -> new RuntimeException("Goods not found with id: " + id));
+    return goodsMapper.toDto(goods);
 }
 
 
-// GoodsService.java
-package com.example.inventory.service;
+---
 
-import com.example.inventory.dto.GoodsDTO;
-import com.example.inventory.entity.Category;
-import com.example.inventory.entity.Goods;
-import com.example.inventory.entity.User;
-import com.example.inventory.mapper.GoodsMapper;
-import com.example.inventory.repository.CategoryRepository;
-import com.example.inventory.repository.GoodsRepository;
-import com.example.inventory.repository.UserRepository;
-import org.springframework.stereotype.Service;
+4. Fix Unit Test Issues
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-@Service
-public class GoodsService {
-    private final GoodsRepository goodsRepository;
-    private final CategoryRepository categoryRepository;
-    private final UserRepository userRepository;
-    private final GoodsMapper goodsMapper;
-
-    public GoodsService(GoodsRepository goodsRepository, CategoryRepository categoryRepository, UserRepository userRepository, GoodsMapper goodsMapper) {
-        this.goodsRepository = goodsRepository;
-        this.categoryRepository = categoryRepository;
-        this.userRepository = userRepository;
-        this.goodsMapper = goodsMapper;
-    }
-
-    public List<GoodsDTO> getAllGoods() {
-        return goodsRepository.findAll().stream()
-                .map(goodsMapper::toDto)
-                .collect(Collectors.toList());
-    }
-
-    public GoodsDTO createGoods(GoodsDTO dto) {
-        Goods goods = goodsMapper.toEntity(dto);
-        goods.setCategory(categoryRepository.findById(dto.getCategoryId()).orElseThrow());
-        goods.setUser(userRepository.findById(dto.getUserId()).orElseThrow());
-        return goodsMapper.toDto(goodsRepository.save(goods));
-    }
-}
-
-
-
-// GoodsController.java
-package com.example.inventory.controller;
-
-import com.example.inventory.dto.GoodsDTO;
-import com.example.inventory.service.GoodsService;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/goods")
-public class GoodsController {
-
-    private final GoodsService goodsService;
-
-    public GoodsController(GoodsService goodsService) {
-        this.goodsService = goodsService;
-    }
-
-    @GetMapping
-    public List<GoodsDTO> getAllGoods() {
-        return goodsService.getAllGoods();
-    }
-
-    @PostMapping
-    public GoodsDTO createGoods(@RequestBody GoodsDTO dto) {
-        return goodsService.createGoods(dto);
-    }
-}
-
-
-
-// GoodsServiceTest.java
-package com.example.inventory.service;
-
-import com.example.inventory.dto.GoodsDTO;
-import com.example.inventory.entity.Category;
-import com.example.inventory.entity.Goods;
-import com.example.inventory.entity.User;
-import com.example.inventory.mapper.GoodsMapper;
-import com.example.inventory.repository.CategoryRepository;
-import com.example.inventory.repository.GoodsRepository;
-import com.example.inventory.repository.UserRepository;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
-import java.util.Optional;
+Import this in your test class:
 
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-class GoodsServiceTest {
+Sample usage:
 
-    @Test
-    void testCreateGoods() {
-        GoodsRepository goodsRepository = mock(GoodsRepository.class);
-        CategoryRepository categoryRepository = mock(CategoryRepository.class);
-        UserRepository userRepository = mock(UserRepository.class);
-        GoodsMapper goodsMapper = new GoodsMapper();
+@Test
+void testFindById() {
+    Goods goods = new Goods();
+    goods.setId(1L);
+    when(goodsRepository.findById(1L)).thenReturn(Optional.of(goods));
 
-        GoodsService service = new GoodsService(goodsRepository, categoryRepository, userRepository, goodsMapper);
+    GoodsDTO dto = goodsService.findById(1L);
+    assertEquals(1L, dto.getId());
 
-        GoodsDTO dto = new GoodsDTO();
-        dto.setName("Apple");
-        dto.setQuantity(100);
-        dto.setCategoryId(1L);
-        dto.setUserId(1L);
+    verify(goodsRepository).findById(1L);
+}
 
-        Category category = new Category();
-        category.setId(1L);
-        User user = new User();
-        user.setId(1L);
+Mock setup:
 
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(goodsRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+@Mock
+private GoodsRepository goodsRepository;
 
-        GoodsDTO saved = service.createGoods(dto);
-        assertEquals("Apple", saved.getName());
-    }
+@InjectMocks
+private GoodsService goodsService;
+
+@BeforeEach
+void setup() {
+    MockitoAnnotations.openMocks(this);
 }
 
 
+---
+
+Let me know if you want:
+
+Updated test class with these changes
+
+Next step (Day 4, maybe?)
+
+Any specific file zipped/shared as one folder
 
 
-
-
-
+Ready when you are.
 
