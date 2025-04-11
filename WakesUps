@@ -1,113 +1,53 @@
-Since your DTOs are fine, we’ll focus only on the updated files that need fixing or verification based on your Day 3 scope. Here’s a list of updated files you need to review:
+Great! For Day 3: Goods Registration, here's the full updated runnable code and project structure to support the task, assuming your Day 2 DTOs are correct.
 
-Updated Files to Verify (Day 3)
 
-1. CategoryMapper.java
+---
 
-package com.example.inventory.mapper;
+Day 3 Directory Structure
 
-import com.example.inventory.dto.CategoryDTO;
-import com.example.inventory.entity.Category;
-import org.springframework.stereotype.Component;
+src/main/java/com/example/inventory/
+├── controller/
+│   └── GoodsController.java
+├── dto/
+│   └── GoodsDTO.java         (From Day 2)
+├── entity/
+│   ├── Goods.java
+│   └── Category.java         (used for mapping)
+├── mapper/
+│   ├── GoodsMapper.java
+│   └── CategoryMapper.java   (added in Day 3)
+├── repository/
+│   ├── GoodsRepository.java
+│   └── CategoryRepository.java
+├── service/
+│   ├── GoodsService.java
+│   └── impl/
+│       └── GoodsServiceImpl.java
 
-@Component
-public class CategoryMapper {
+src/test/java/com/example/inventory/
+├── service/
+│   └── GoodsServiceImplTest.java
 
-    public Category toEntity(CategoryDTO dto) {
-        if (dto == null) return null;
 
-        Category entity = new Category();
-        entity.setId(dto.getId());
-        entity.setName(dto.getName());
-        entity.setDescription(dto.getDescription());
-        entity.setStorageRequirements(dto.getStorageRequirements());
-        entity.setIsPerishable(dto.getIsPerishable());
-        entity.setShelfLife(dto.getShelfLife());
-        return entity;
-    }
+---
 
-    public CategoryDTO toDto(Category entity) {
-        if (entity == null) return null;
+1. GoodsMapper.java
 
-        CategoryDTO dto = new CategoryDTO();
-        dto.setId(entity.getId());
-        dto.setName(entity.getName());
-        dto.setDescription(entity.getDescription());
-        dto.setStorageRequirements(entity.getStorageRequirements());
-        dto.setIsPerishable(entity.getIsPerishable());
-        dto.setShelfLife(entity.getShelfLife());
-        return dto;
-    }
+@Mapper(componentModel = "spring", uses = {CategoryMapper.class})
+public interface GoodsMapper {
+    GoodsDTO toDto(Goods goods);
+    Goods toEntity(GoodsDTO dto);
 }
 
 
 ---
 
-2. GoodsMapper.java
+2. CategoryMapper.java
 
-Make sure you have correct getters and null checks:
-
-package com.example.inventory.mapper;
-
-import com.example.inventory.dto.GoodsDTO;
-import com.example.inventory.entity.Category;
-import com.example.inventory.entity.Goods;
-import com.example.inventory.repository.CategoryRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
-@Component
-public class GoodsMapper {
-
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    public Goods toEntity(GoodsDTO dto) {
-        if (dto == null) return null;
-
-        Goods goods = new Goods();
-        goods.setId(dto.getId());
-        goods.setName(dto.getName());
-        goods.setQuantity(dto.getQuantity());
-        goods.setUnitOfMeasure(dto.getUnitOfMeasure());
-        goods.setLocation(dto.getLocation());
-        goods.setExpiryDate(dto.getExpiryDate());
-        goods.setAcquisitionDate(dto.getAcquisitionDate());
-        goods.setMinimumStockLevel(dto.getMinimumStockLevel());
-        goods.setPrice(dto.getPrice());
-        goods.setSupplier(dto.getSupplier());
-        goods.setStatus(dto.getStatus());
-
-        if (dto.getCategoryId() != null) {
-            Category category = categoryRepository.findById(dto.getCategoryId()).orElse(null);
-            goods.setCategory(category);
-        }
-
-        return goods;
-    }
-
-    public GoodsDTO toDto(Goods goods) {
-        if (goods == null) return null;
-
-        GoodsDTO dto = new GoodsDTO();
-        dto.setId(goods.getId());
-        dto.setName(goods.getName());
-        dto.setQuantity(goods.getQuantity());
-        dto.setUnitOfMeasure(goods.getUnitOfMeasure());
-        dto.setLocation(goods.getLocation());
-        dto.setExpiryDate(goods.getExpiryDate());
-        dto.setAcquisitionDate(goods.getAcquisitionDate());
-        dto.setMinimumStockLevel(goods.getMinimumStockLevel());
-        dto.setPrice(goods.getPrice());
-        dto.setSupplier(goods.getSupplier());
-        dto.setStatus(goods.getStatus());
-
-        if (goods.getCategory() != null) {
-            dto.setCategoryId(goods.getCategory().getId());
-        }
-
-        return dto;
-    }
+@Mapper(componentModel = "spring")
+public interface CategoryMapper {
+    CategoryDTO toDto(Category category);
+    Category toEntity(CategoryDTO dto);
 }
 
 
@@ -115,27 +55,77 @@ public class GoodsMapper {
 
 3. GoodsService.java
 
-Make sure toEntity() and findById() are added:
-
-public Goods toEntity(GoodsDTO dto) {
-    return goodsMapper.toEntity(dto);
-}
-
-public GoodsDTO findById(Long id) {
-    return goodsRepository.findById(id)
-            .map(goodsMapper::toDto)
-            .orElseThrow(() -> new EntityNotFoundException("Goods not found with id: " + id));
+public interface GoodsService {
+    GoodsDTO save(GoodsDTO goodsDTO);
+    GoodsDTO findById(Long id);
 }
 
 
 ---
 
-4. GoodsServiceTest.java
+4. GoodsServiceImpl.java
 
-Correct mock usage and assertions:
+@Service
+@RequiredArgsConstructor
+public class GoodsServiceImpl implements GoodsService {
+    private final GoodsRepository goodsRepository;
+    private final GoodsMapper goodsMapper;
+
+    @Override
+    public GoodsDTO save(GoodsDTO goodsDTO) {
+        Goods entity = goodsMapper.toEntity(goodsDTO);
+        return goodsMapper.toDto(goodsRepository.save(entity));
+    }
+
+    @Override
+    public GoodsDTO findById(Long id) {
+        return goodsRepository.findById(id)
+                .map(goodsMapper::toDto)
+                .orElseThrow(() -> new RuntimeException("Goods not found"));
+    }
+}
+
+
+---
+
+5. GoodsRepository.java
+
+@Repository
+public interface GoodsRepository extends JpaRepository<Goods, Long> {
+}
+
+
+---
+
+6. GoodsController.java
+
+@RestController
+@RequestMapping("/api/goods")
+@RequiredArgsConstructor
+public class GoodsController {
+    private final GoodsService goodsService;
+
+    @PostMapping
+    public ResponseEntity<GoodsDTO> create(@RequestBody GoodsDTO dto) {
+        return new ResponseEntity<>(goodsService.save(dto), HttpStatus.CREATED);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<GoodsDTO> get(@PathVariable Long id) {
+        return ResponseEntity.ok(goodsService.findById(id));
+    }
+}
+
+
+---
+
+7. GoodsServiceImplTest.java
 
 @ExtendWith(MockitoExtension.class)
-class GoodsServiceTest {
+public class GoodsServiceImplTest {
+
+    @InjectMocks
+    private GoodsServiceImpl goodsService;
 
     @Mock
     private GoodsRepository goodsRepository;
@@ -143,24 +133,142 @@ class GoodsServiceTest {
     @Mock
     private GoodsMapper goodsMapper;
 
-    @InjectMocks
-    private GoodsService goodsService;
+    @Test
+    void testSave() {
+        GoodsDTO dto = new GoodsDTO();
+        Goods entity = new Goods();
+
+        when(goodsMapper.toEntity(dto)).thenReturn(entity);
+        when(goodsRepository.save(entity)).thenReturn(entity);
+        when(goodsMapper.toDto(entity)).thenReturn(dto);
+
+        GoodsDTO saved = goodsService.save(dto);
+
+        assertNotNull(saved);
+        verify(goodsRepository).save(entity);
+    }
 
     @Test
     void testFindById() {
-        Goods goods = new Goods();
-        goods.setId(1L);
-
+        Goods entity = new Goods();
         GoodsDTO dto = new GoodsDTO();
-        dto.setId(1L);
 
-        when(goodsRepository.findById(1L)).thenReturn(Optional.of(goods));
-        when(goodsMapper.toDto(goods)).thenReturn(dto);
+        when(goodsRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(goodsMapper.toDto(entity)).thenReturn(dto);
 
-        GoodsDTO result = goodsService.findById(1L);
+        GoodsDTO found = goodsService.findById(1L);
 
-        assertEquals(dto.getId(), result.getId());
+        assertNotNull(found);
         verify(goodsRepository).findById(1L);
-        verify(goodsMapper).toDto(goods);
     }
 }
+
+
+---
+
+Would you like me to also provide the updated Goods.java and Category.java entity files to make sure everything is aligned?
+
+
+
+Perfect! Here's the updated and complete entity code for Day 3: Goods Registration — these match your DTOs and mapper logic to ensure smooth conversion and persistence.
+
+
+---
+
+1. Category.java
+
+package com.example.inventory.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "category")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Category {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String name;
+
+    @Column(length = 500)
+    private String description;
+
+    @Column(name = "storage_requirements", length = 500)
+    private String storageRequirements;
+
+    @Column(name = "is_perishable")
+    private Boolean isPerishable;
+
+    @Column(name = "shelf_life")
+    private Integer shelfLife;
+}
+
+
+---
+
+2. Goods.java
+
+package com.example.inventory.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "goods")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Goods {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    private Integer quantity;
+
+    @Column(name = "unit_of_measure")
+    private String unitOfMeasure;
+
+    private String location;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
+
+    @Column(name = "acquisition_date")
+    private LocalDate acquisitionDate;
+
+    @Column(name = "minimum_stock_level")
+    private Integer minimumStockLevel;
+
+    private BigDecimal price;
+
+    private String supplier;
+
+    private String status;
+
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
+}
+
+
+---
+
+These entities are annotated with Jakarta (if you're using Spring Boot 3+) and match the fields used in your mappers and service layer. Let me know if you'd like the Liquibase XML for these tables verified too.
+
+
