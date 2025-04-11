@@ -1,154 +1,164 @@
-Yes! Based on our previous discussion, your Day 3 tasks in the Inventory Management Module involve updating and verifying the following components related to Goods and Category:
+Here's the folder structure for your Day 3 (Goods Registration - Backend) based on your existing Spring Boot project with Liquibase, H2, and Java entities.
 
 
 ---
 
-Day 3 Tasks Recap
-
-1. Mapper classes
-
-GoodsMapper.java
-
-CategoryMapper.java
-
-
-
-2. Service
-
-GoodsService.java (ensure it has toEntity, findById, and uses the mapper correctly)
-
-
-
-3. Unit Tests
-
-GoodsServiceTest.java (mocking, verifying behavior, assertions)
-
-
-
-
-
----
-
-Updated Project Structure for Day 3
+Backend Directory Structure (Spring Boot)
 
 src/
 └── main/
-    └── java/
-        └── com/example/inventory/
-            ├── controller/
-            │   └── GoodsController.java        # (Coming up in Day 4)
-            ├── dto/
-            │   ├── CategoryDTO.java
-            │   └── GoodsDTO.java
-            ├── entity/
-            │   ├── Category.java
-            │   └── Goods.java
-            ├── mapper/
-            │   ├── CategoryMapper.java        # Day 3
-            │   └── GoodsMapper.java           # Day 3
-            ├── repository/
-            │   ├── CategoryRepository.java
-            │   └── GoodsRepository.java
-            └── service/
-                └── GoodsService.java          # Day 3
-└── test/
-    └── java/
-        └── com/example/inventory/service/
-            └── GoodsServiceTest.java         # Day 3
+    ├── java/
+    │   └── org/
+    │       └── policy/
+    │           ├── controller/
+    │           │   └── GoodsController.java
+    │           │
+    │           ├── dto/
+    │           │   ├── GoodsRequestDTO.java
+    │           │   └── GoodsResponseDTO.java
+    │           │
+    │           ├── entity/
+    │           │   ├── AppUser.java          (Already done)
+    │           │   ├── Category.java         (Already done)
+    │           │   └── Goods.java            (Already done)
+    │           │
+    │           ├── mapper/
+    │           │   └── GoodsMapper.java
+    │           │
+    │           ├── repository/
+    │           │   ├── GoodsRepository.java
+    │           │   ├── CategoryRepository.java   (Already done)
+    │           │   └── UserRepository.java       (Already done)
+    │           │
+    │           ├── service/
+    │           │   └── GoodsService.java
+    │           │
+    │           └── InventoryManagementApplication.java
+    │
+    └── resources/
+        ├── application.yml / application.properties
+        └── db/
+            └── changelog/
+                └── db.changelog-master.xml     (Already updated)
 
 
 ---
 
-Day 3 Full Code
+Key Points:
 
-1. CategoryMapper.java
+All your Day 3 logic resides inside GoodsController, GoodsService, GoodsMapper, GoodsRepository, and dto classes.
 
-package com.example.inventory.mapper;
+DTOs are used to transfer data safely to/from frontend.
 
-import com.example.inventory.dto.CategoryDTO;
-import com.example.inventory.entity.Category;
-import org.springframework.stereotype.Component;
+Mappers convert between entity and DTO.
 
-@Component
-public class CategoryMapper {
+Repository uses Spring Data JPA to handle DB.
 
-    public Category toEntity(CategoryDTO dto) {
-        if (dto == null) return null;
+Liquibase has already set up the goods table.
 
-        Category entity = new Category();
-        entity.setId(dto.getId());
-        entity.setName(dto.getName());
-        entity.setDescription(dto.getDescription());
-        entity.setStorageRequirements(dto.getStorageRequirements());
-        entity.setIsPerishable(dto.getIsPerishable());
-        entity.setShelfLife(dto.getShelfLife());
-        return entity;
-    }
 
-    public CategoryDTO toDto(Category entity) {
-        if (entity == null) return null;
 
-        CategoryDTO dto = new CategoryDTO();
-        dto.setId(entity.getId());
-        dto.setName(entity.getName());
-        dto.setDescription(entity.getDescription());
-        dto.setStorageRequirements(entity.getStorageRequirements());
-        dto.setIsPerishable(entity.getIsPerishable());
-        dto.setShelfLife(entity.getShelfLife());
-        return dto;
-    }
+---
+
+Let me know if you'd like the Angular (Day 3) structure for Goods registration form with PrimeNG + Reactive Forms next.
+
+
+
+Here is the complete backend code structure for Day 3 - Goods Registration (User):
+
+
+---
+
+1. DTOs
+
+GoodsRequestDTO.java
+
+package org.policy.dto;
+
+import lombok.Data;
+
+import java.time.LocalDate;
+
+@Data
+public class GoodsRequestDTO {
+    private String name;
+    private Long categoryId;
+    private Integer quantity;
+    private String unitOfMeasure;
+    private String location;
+    private LocalDate expiryDate;
+    private LocalDate acquisitionDate;
+    private Integer minimumStockLevel;
+    private Double price;
+    private String supplier;
+    private Long userId;
+}
+
+GoodsResponseDTO.java
+
+package org.policy.dto;
+
+import lombok.Data;
+
+import java.time.LocalDate;
+
+@Data
+public class GoodsResponseDTO {
+    private Long id;
+    private String name;
+    private String categoryName;
+    private Integer quantity;
+    private String unitOfMeasure;
+    private String location;
+    private LocalDate expiryDate;
+    private LocalDate acquisitionDate;
+    private Integer minimumStockLevel;
+    private Double price;
+    private String supplier;
+    private String status;
 }
 
 
 ---
 
-2. GoodsMapper.java
+2. Mapper
 
-package com.example.inventory.mapper;
+GoodsMapper.java
 
-import com.example.inventory.dto.GoodsDTO;
-import com.example.inventory.entity.Category;
-import com.example.inventory.entity.Goods;
-import com.example.inventory.repository.CategoryRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+package org.policy.mapper;
+
+import org.policy.dto.GoodsRequestDTO;
+import org.policy.dto.GoodsResponseDTO;
+import org.policy.entity.Category;
+import org.policy.entity.Goods;
+import org.policy.entity.AppUser;
 import org.springframework.stereotype.Component;
 
 @Component
 public class GoodsMapper {
 
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    public Goods toEntity(GoodsDTO dto) {
-        if (dto == null) return null;
-
-        Goods goods = new Goods();
-        goods.setId(dto.getId());
-        goods.setName(dto.getName());
-        goods.setQuantity(dto.getQuantity());
-        goods.setUnitOfMeasure(dto.getUnitOfMeasure());
-        goods.setLocation(dto.getLocation());
-        goods.setExpiryDate(dto.getExpiryDate());
-        goods.setAcquisitionDate(dto.getAcquisitionDate());
-        goods.setMinimumStockLevel(dto.getMinimumStockLevel());
-        goods.setPrice(dto.getPrice());
-        goods.setSupplier(dto.getSupplier());
-        goods.setStatus(dto.getStatus());
-
-        if (dto.getCategoryId() != null) {
-            Category category = categoryRepository.findById(dto.getCategoryId()).orElse(null);
-            goods.setCategory(category);
-        }
-
-        return goods;
+    public Goods toEntity(GoodsRequestDTO dto, AppUser user, Category category) {
+        return Goods.builder()
+                .name(dto.getName())
+                .category(category)
+                .quantity(dto.getQuantity())
+                .unitOfMeasure(dto.getUnitOfMeasure())
+                .location(dto.getLocation())
+                .expiryDate(dto.getExpiryDate())
+                .acquisitionDate(dto.getAcquisitionDate())
+                .minimumStockLevel(dto.getMinimumStockLevel())
+                .price(dto.getPrice())
+                .supplier(dto.getSupplier())
+                .user(user)
+                .status("PENDING")
+                .build();
     }
 
-    public GoodsDTO toDto(Goods goods) {
-        if (goods == null) return null;
-
-        GoodsDTO dto = new GoodsDTO();
+    public GoodsResponseDTO toDTO(Goods goods) {
+        GoodsResponseDTO dto = new GoodsResponseDTO();
         dto.setId(goods.getId());
         dto.setName(goods.getName());
+        dto.setCategoryName(goods.getCategory().getName());
         dto.setQuantity(goods.getQuantity());
         dto.setUnitOfMeasure(goods.getUnitOfMeasure());
         dto.setLocation(goods.getLocation());
@@ -158,11 +168,6 @@ public class GoodsMapper {
         dto.setPrice(goods.getPrice());
         dto.setSupplier(goods.getSupplier());
         dto.setStatus(goods.getStatus());
-
-        if (goods.getCategory() != null) {
-            dto.setCategoryId(goods.getCategory().getId());
-        }
-
         return dto;
     }
 }
@@ -170,95 +175,127 @@ public class GoodsMapper {
 
 ---
 
-3. GoodsService.java
+3. Repository
 
-package com.example.inventory.service;
+GoodsRepository.java
 
-import com.example.inventory.dto.GoodsDTO;
-import com.example.inventory.entity.Goods;
-import com.example.inventory.mapper.GoodsMapper;
-import com.example.inventory.repository.GoodsRepository;
-import jakarta.persistence.EntityNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
+package org.policy.repository;
+
+import org.policy.entity.Goods;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface GoodsRepository extends JpaRepository<Goods, Long> {
+    List<Goods> findByUserId(Long userId);
+}
+
+
+---
+
+4. Service
+
+GoodsService.java
+
+package org.policy.service;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.GoodsRequestDTO;
+import org.policy.dto.GoodsResponseDTO;
+import org.policy.entity.AppUser;
+import org.policy.entity.Category;
+import org.policy.entity.Goods;
+import org.policy.mapper.GoodsMapper;
+import org.policy.repository.CategoryRepository;
+import org.policy.repository.GoodsRepository;
+import org.policy.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 @Service
+@RequiredArgsConstructor
 public class GoodsService {
 
-    @Autowired
-    private GoodsRepository goodsRepository;
+    private final GoodsRepository goodsRepository;
+    private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
+    private final GoodsMapper goodsMapper;
 
-    @Autowired
-    private GoodsMapper goodsMapper;
+    public GoodsResponseDTO registerGoods(GoodsRequestDTO dto) {
+        AppUser user = userRepository.findById(dto.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-    public GoodsDTO findById(Long id) {
-        Goods goods = goodsRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Goods not found with id: " + id));
-        return goodsMapper.toDto(goods);
+        Category category = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        Goods goods = goodsMapper.toEntity(dto, user, category);
+        goods = goodsRepository.save(goods);
+
+        return goodsMapper.toDTO(goods);
     }
 
-    public Goods toEntity(GoodsDTO dto) {
-        return goodsMapper.toEntity(dto);
+    public List<GoodsResponseDTO> getUserGoods(Long userId) {
+        return goodsRepository.findByUserId(userId)
+                .stream()
+                .map(goodsMapper::toDTO)
+                .collect(Collectors.toList());
     }
 
-    // Add more methods like save, update, delete as needed in later days
-}
-
-
----
-
-4. GoodsServiceTest.java
-
-package com.example.inventory.service;
-
-import com.example.inventory.dto.GoodsDTO;
-import com.example.inventory.entity.Goods;
-import com.example.inventory.mapper.GoodsMapper;
-import com.example.inventory.repository.GoodsRepository;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.*;
-
-@ExtendWith(MockitoExtension.class)
-class GoodsServiceTest {
-
-    @Mock
-    private GoodsRepository goodsRepository;
-
-    @Mock
-    private GoodsMapper goodsMapper;
-
-    @InjectMocks
-    private GoodsService goodsService;
-
-    @Test
-    void testFindById() {
-        Goods goods = new Goods();
-        goods.setId(1L);
-
-        GoodsDTO dto = new GoodsDTO();
-        dto.setId(1L);
-
-        when(goodsRepository.findById(1L)).thenReturn(Optional.of(goods));
-        when(goodsMapper.toDto(goods)).thenReturn(dto);
-
-        GoodsDTO result = goodsService.findById(1L);
-
-        assertEquals(1L, result.getId());
-        verify(goodsRepository).findById(1L);
-        verify(goodsMapper).toDto(goods);
+    public Optional<Goods> findById(Long id) {
+        return goodsRepository.findById(id);
     }
 }
 
 
 ---
 
-Let me know if you'd like to proceed with Day 4 (which includes Controller, additional Service methods like create, update, and test coverage for those).
+5. Controller
+
+GoodsController.java
+
+package org.policy.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.GoodsRequestDTO;
+import org.policy.dto.GoodsResponseDTO;
+import org.policy.service.GoodsService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/goods")
+@RequiredArgsConstructor
+public class GoodsController {
+
+    private final GoodsService goodsService;
+
+    @PostMapping
+    public ResponseEntity<GoodsResponseDTO> registerGoods(@RequestBody GoodsRequestDTO dto) {
+        return ResponseEntity.ok(goodsService.registerGoods(dto));
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<GoodsResponseDTO>> getUserGoods(@PathVariable Long userId) {
+        return ResponseEntity.ok(goodsService.getUserGoods(userId));
+    }
+}
+
+
+---
+
+Let me know if you also want:
+
+Angular form setup for Day 3
+
+Validation logic
+
+Admin/Logistics Coordinator logic for later days
+
+
+Ready to move to Angular Day 3 frontend?
 
