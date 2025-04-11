@@ -1,516 +1,270 @@
-<?xml version="1.0" encoding="utf-8"?>
-<databaseChangeLog
-    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-
-    <!-- User Table -->
-    <changeSet id="1" author="dev">
-        <createTable tableName="app_user">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="email" type="VARCHAR(100)">
-                <constraints unique="true" nullable="false"/>
-            </column>
-            <column name="password" type="VARCHAR(180)"/>
-            <column name="role" type="VARCHAR(50)"/>
-        </createTable>
-    </changeSet>
-
-    <!-- Category Table -->
-    <changeSet id="2" author="dev">
-        <createTable tableName="category">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="name" type="VARCHAR(50)">
-                <constraints unique="true" nullable="false"/>
-            </column>
-            <column name="description" type="VARCHAR(500)"/>
-            <column name="storage_requirements" type="VARCHAR(500)"/>
-            <column name="is_perishable" type="BOOLEAN"/>
-            <column name="shelf_life" type="INT"/>
-        </createTable>
-    </changeSet>
-
-    <!-- Goods Table -->
-    <changeSet id="3" author="dev">
-        <createTable tableName="goods">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true"/>
-            </column>
-            <column name="name" type="VARCHAR(100)"/>
-            <column name="quantity" type="INT"/>
-            <column name="unit_of_measure" type="VARCHAR(50)"/>
-            <column name="location" type="VARCHAR(100)"/>
-            <column name="expiry_date" type="DATE"/>
-            <column name="acquisition_date" type="DATE"/>
-            <column name="minimum_stock_level" type="INT"/>
-            <column name="price" type="DECIMAL(10,2)"/>
-            <column name="supplier" type="VARCHAR(100)"/>
-            <column name="status" type="VARCHAR(50)"/>
-            <column name="user_id" type="BIGINT"/>
-            <column name="category_id" type="BIGINT"/>
-        </createTable>
-
-        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="user_id"
-                                 referencedTableName="app_user" referencedColumnNames="id"
-                                 constraintName="fk_goods_user"/>
-
-        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="category_id"
-                                 referencedTableName="category" referencedColumnNames="id"
-                                 constraintName="fk_goods_category"/>
-    </changeSet>
-
-    <!-- Goods Review Table -->
-    <changeSet id="4" author="dev">
-        <createTable tableName="goods_review">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true"/>
-            </column>
-            <column name="goods_id" type="BIGINT" unique="true"/>
-            <column name="status" type="VARCHAR(20)"/>
-            <column name="comment" type="VARCHAR(500)"/>
-            <column name="review_date" type="DATE"/>
-        </createTable>
-
-        <addForeignKeyConstraint baseTableName="goods_review" baseColumnNames="goods_id"
-                                 referencedTableName="goods" referencedColumnNames="id"
-                                 constraintName="fk_review_goods"/>
-    </changeSet>
-
-    <!-- Warehouse Table -->
-    <changeSet id="5" author="dev">
-        <createTable tableName="warehouse">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true"/>
-            </column>
-            <column name="name" type="VARCHAR(100)"/>
-            <column name="location" type="VARCHAR(200)"/>
-        </createTable>
-    </changeSet>
-
-    <!-- Inventory Table -->
-    <changeSet id="6" author="dev">
-        <createTable tableName="inventory">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true"/>
-            </column>
-            <column name="goods_id" type="BIGINT" unique="true"/>
-            <column name="quantity" type="INT"/>
-            <column name="warehouse_location" type="VARCHAR(200)"/>
-            <column name="date_added" type="DATE"/>
-            <column name="warehouse_id" type="BIGINT"/>
-        </createTable>
-
-        <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="goods_id"
-                                 referencedTableName="goods" referencedColumnNames="id"
-                                 constraintName="fk_inventory_goods"/>
-
-        <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="warehouse_id"
-                                 referencedTableName="warehouse" referencedColumnNames="id"
-                                 constraintName="fk_inventory_warehouse"/>
-    </changeSet>
-
-</databaseChangeLog>
+src/
+└── main/
+    ├── java/com/example/inventory/
+    │   ├── controller/
+    │   │   ├── GoodsController.java
+    │   │   └── CategoryController.java
+    │   ├── dto/
+    │   │   ├── GoodsDTO.java
+    │   │   └── CategoryDTO.java
+    │   ├── entity/
+    │   │   ├── Goods.java
+    │   │   └── Category.java
+    │   ├── mapper/
+    │   │   ├── GoodsMapper.java
+    │   │   └── CategoryMapper.java
+    │   ├── repository/
+    │   │   ├── GoodsRepository.java
+    │   │   └── CategoryRepository.java
+    │   ├── service/
+    │   │   ├── GoodsService.java
+    │   │   └── CategoryService.java
+    │   └── InventoryManagementApplication.java
+    └── test/
+        └── java/com/example/inventory/
+            └── service/
+                └── GoodsServiceTest.java
 
 
-<?xml version="1.0" encoding="utf-8"?>
-<databaseChangeLog
-    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+// GoodsRepository.java
+package com.example.inventory.repository;
 
-    <!-- User Table -->
-    <changeSet id="1" author="dev">
-        <createTable tableName="app_user">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="email" type="VARCHAR(100)">
-                <constraints unique="true" nullable="false"/>
-            </column>
-            <column name="password" type="VARCHAR(180)"/>
-            <column name="role" type="VARCHAR(50)"/>
-        </createTable>
-    </changeSet>
+import com.example.inventory.entity.Goods;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-    <!-- Category Table -->
-    <changeSet id="2" author="dev">
-        <createTable tableName="category">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="name" type="VARCHAR(50)">
-                <constraints unique="true" nullable="false"/>
-            </column>
-            <column name="description" type="VARCHAR(500)"/>
-            <column name="storage_requirements" type="VARCHAR(500)"/>
-            <column name="is_perishable" type="BOOLEAN"/>
-            <column name="shelf_life" type="INT"/>
-        </createTable>
-    </changeSet>
+public interface GoodsRepository extends JpaRepository<Goods, Long> {
+}
 
-    <!-- Goods Table -->
-    <changeSet id="3" author="dev">
-        <createTable tableName="goods">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true"/>
-            </column>
-            <column name="name" type="VARCHAR(100)"/>
-            <column name="quantity" type="INT"/>
-            <column name="unit_of_measure" type="VARCHAR(50)"/>
-            <column name="location" type="VARCHAR(100)"/>
-            <column name="expiry_date" type="DATE"/>
-            <column name="acquisition_date" type="DATE"/>
-            <column name="minimum_stock_level" type="INT"/>
-            <column name="price" type="DECIMAL(10,2)"/>
-            <column name="supplier" type="VARCHAR(100)"/>
-            <column name="status" type="VARCHAR(50)"/>
-            <column name="user_id" type="BIGINT"/>
-            <column name="category_id" type="BIGINT"/>
-        </createTable>
+// CategoryRepository.java
+package com.example.inventory.repository;
 
-        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="user_id"
-                                 referencedTableName="app_user" referencedColumnNames="id"
-                                 constraintName="fk_goods_user"/>
+import com.example.inventory.entity.Category;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="category_id"
-                                 referencedTableName="category" referencedColumnNames="id"
-                                 constraintName="fk_goods_category"/>
-    </changeSet>
-</databaseChangeLog>
-
-
-
-package org.policy.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-
-@Entity
-@Table(name = "app_user")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class User {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, unique = true, length = 100)
-    private String email;
-
-    private String password;
-
-    private String role;
+public interface CategoryRepository extends JpaRepository<Category, Long> {
 }
 
 
-package org.policy.entity;
+// GoodsDTO.java
+package com.example.inventory.dto;
 
-import jakarta.persistence.*;
-import lombok.*;
+import lombok.Data;
+import java.util.Date;
 
-@Entity
-@Table(name = "category")
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Category {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class GoodsDTO {
     private Long id;
-
-    @Column(nullable = false, unique = true, length = 50)
     private String name;
+    private Integer quantity;
+    private String unitOfMeasure;
+    private String location;
+    private Date expiryDate;
+    private Date acquisitionDate;
+    private Integer minimumStockLevel;
+    private Double price;
+    private String supplier;
+    private String status;
+    private Long userId;
+    private Long categoryId;
+}
 
+
+
+// GoodsMapper.java
+package com.example.inventory.mapper;
+
+import com.example.inventory.dto.GoodsDTO;
+import com.example.inventory.entity.Goods;
+import org.springframework.stereotype.Component;
+
+@Component
+public class GoodsMapper {
+    public GoodsDTO toDto(Goods goods) {
+        GoodsDTO dto = new GoodsDTO();
+        dto.setId(goods.getId());
+        dto.setName(goods.getName());
+        dto.setQuantity(goods.getQuantity());
+        dto.setUnitOfMeasure(goods.getUnitOfMeasure());
+        dto.setLocation(goods.getLocation());
+        dto.setExpiryDate(goods.getExpiryDate());
+        dto.setAcquisitionDate(goods.getAcquisitionDate());
+        dto.setMinimumStockLevel(goods.getMinimumStockLevel());
+        dto.setPrice(goods.getPrice());
+        dto.setSupplier(goods.getSupplier());
+        dto.setStatus(goods.getStatus());
+        dto.setUserId(goods.getUser().getId());
+        dto.setCategoryId(goods.getCategory().getId());
+        return dto;
+    }
+
+    public Goods toEntity(GoodsDTO dto) {
+        Goods goods = new Goods();
+        goods.setId(dto.getId());
+        goods.setName(dto.getName());
+        goods.setQuantity(dto.getQuantity());
+        goods.setUnitOfMeasure(dto.getUnitOfMeasure());
+        goods.setLocation(dto.getLocation());
+        goods.setExpiryDate(dto.getExpiryDate());
+        goods.setAcquisitionDate(dto.getAcquisitionDate());
+        goods.setMinimumStockLevel(dto.getMinimumStockLevel());
+        goods.setPrice(dto.getPrice());
+        goods.setSupplier(dto.getSupplier());
+        goods.setStatus(dto.getStatus());
+        return goods;
+    }
+}
+
+
+
+
+// CategoryDTO.java
+package com.example.inventory.dto;
+
+import lombok.Data;
+
+@Data
+public class CategoryDTO {
+    private Long id;
+    private String name;
     private String description;
-
-    @Column(name = "storage_requirements")
     private String storageRequirements;
-
-    @Column(name = "is_perishable")
     private Boolean isPerishable;
-
-    @Column(name = "shelf_life")
     private Integer shelfLife;
 }
 
 
-package org.policy.entity;
+// GoodsService.java
+package com.example.inventory.service;
 
-import jakarta.persistence.*;
-import lombok.*;
+import com.example.inventory.dto.GoodsDTO;
+import com.example.inventory.entity.Category;
+import com.example.inventory.entity.Goods;
+import com.example.inventory.entity.User;
+import com.example.inventory.mapper.GoodsMapper;
+import com.example.inventory.repository.CategoryRepository;
+import com.example.inventory.repository.GoodsRepository;
+import com.example.inventory.repository.UserRepository;
+import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
-@Entity
-@Table(name = "goods")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Goods {
+@Service
+public class GoodsService {
+    private final GoodsRepository goodsRepository;
+    private final CategoryRepository categoryRepository;
+    private final UserRepository userRepository;
+    private final GoodsMapper goodsMapper;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    public GoodsService(GoodsRepository goodsRepository, CategoryRepository categoryRepository, UserRepository userRepository, GoodsMapper goodsMapper) {
+        this.goodsRepository = goodsRepository;
+        this.categoryRepository = categoryRepository;
+        this.userRepository = userRepository;
+        this.goodsMapper = goodsMapper;
+    }
 
-    private String name;
+    public List<GoodsDTO> getAllGoods() {
+        return goodsRepository.findAll().stream()
+                .map(goodsMapper::toDto)
+                .collect(Collectors.toList());
+    }
 
-    private Integer quantity;
-
-    @Column(name = "unit_of_measure")
-    private String unitOfMeasure;
-
-    private String location;
-
-    @Column(name = "expiry_date")
-    private LocalDate expiryDate;
-
-    @Column(name = "acquisition_date")
-    private LocalDate acquisitionDate;
-
-    @Column(name = "minimum_stock_level")
-    private Integer minimumStockLevel;
-
-    private BigDecimal price;
-
-    private String supplier;
-
-    private String status;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category;
+    public GoodsDTO createGoods(GoodsDTO dto) {
+        Goods goods = goodsMapper.toEntity(dto);
+        goods.setCategory(categoryRepository.findById(dto.getCategoryId()).orElseThrow());
+        goods.setUser(userRepository.findById(dto.getUserId()).orElseThrow());
+        return goodsMapper.toDto(goodsRepository.save(goods));
+    }
 }
 
 
 
-<?xml version="1.0" encoding="utf-8"?>
-<databaseChangeLog
-    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+// GoodsController.java
+package com.example.inventory.controller;
 
-    <!-- User Table -->
-    <changeSet id="1" author="dev">
-        <createTable tableName="app_user">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="email" type="VARCHAR(100)">
-                <constraints unique="true" nullable="false"/>
-            </column>
-            <column name="password" type="VARCHAR(180)"/>
-            <column name="role" type="VARCHAR(50)"/>
-        </createTable>
-    </changeSet>
+import com.example.inventory.dto.GoodsDTO;
+import com.example.inventory.service.GoodsService;
+import org.springframework.web.bind.annotation.*;
 
-    <!-- Category Table -->
-    <changeSet id="2" author="dev">
-        <createTable tableName="category">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="name" type="VARCHAR(50)">
-                <constraints unique="true" nullable="false"/>
-            </column>
-            <column name="description" type="VARCHAR(500)"/>
-            <column name="storage_requirements" type="VARCHAR(500)"/>
-            <column name="is_perishable" type="BOOLEAN"/>
-            <column name="shelf_life" type="INT"/>
-        </createTable>
-    </changeSet>
+import java.util.List;
 
-    <!-- Goods Table -->
-    <changeSet id="3" author="dev">
-        <createTable tableName="goods">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true"/>
-            </column>
-            <column name="name" type="VARCHAR(100)"/>
-            <column name="quantity" type="INT"/>
-            <column name="unit_of_measure" type="VARCHAR(50)"/>
-            <column name="location" type="VARCHAR(100)"/>
-            <column name="expiry_date" type="DATE"/>
-            <column name="acquisition_date" type="DATE"/>
-            <column name="minimum_stock_level" type="INT"/>
-            <column name="price" type="DECIMAL(10,2)"/>
-            <column name="supplier" type="VARCHAR(100)"/>
-            <column name="status" type="VARCHAR(50)"/>
-            <column name="user_id" type="BIGINT"/>
-            <column name="category_id" type="BIGINT"/>
-        </createTable>
+@RestController
+@RequestMapping("/api/goods")
+public class GoodsController {
 
-        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="user_id"
-                                 referencedTableName="app_user" referencedColumnNames="id"
-                                 constraintName="fk_goods_user"/>
+    private final GoodsService goodsService;
 
-        <addForeignKeyConstraint baseTableName="goods" baseColumnNames="category_id"
-                                 referencedTableName="category" referencedColumnNames="id"
-                                 constraintName="fk_goods_category"/>
-    </changeSet>
+    public GoodsController(GoodsService goodsService) {
+        this.goodsService = goodsService;
+    }
 
-    <!-- Goods Review Table -->
-    <changeSet id="4" author="dev">
-        <createTable tableName="goods_review">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true"/>
-            </column>
-            <column name="goods_id" type="BIGINT" unique="true"/>
-            <column name="status" type="VARCHAR(20)"/>
-            <column name="comment" type="VARCHAR(500)"/>
-            <column name="review_date" type="DATE"/>
-        </createTable>
+    @GetMapping
+    public List<GoodsDTO> getAllGoods() {
+        return goodsService.getAllGoods();
+    }
 
-        <addForeignKeyConstraint baseTableName="goods_review" baseColumnNames="goods_id"
-                                 referencedTableName="goods" referencedColumnNames="id"
-                                 constraintName="fk_review_goods"/>
-    </changeSet>
-
-    <!-- Warehouse Table -->
-    <changeSet id="5" author="dev">
-        <createTable tableName="warehouse">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true"/>
-            </column>
-            <column name="name" type="VARCHAR(100)"/>
-            <column name="location" type="VARCHAR(200)"/>
-        </createTable>
-    </changeSet>
-
-    <!-- Inventory Table -->
-    <changeSet id="6" author="dev">
-        <createTable tableName="inventory">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true"/>
-            </column>
-            <column name="goods_id" type="BIGINT" unique="true"/>
-            <column name="quantity" type="INT"/>
-            <column name="warehouse_location" type="VARCHAR(200)"/>
-            <column name="date_added" type="DATE"/>
-            <column name="warehouse_id" type="BIGINT"/>
-        </createTable>
-
-        <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="goods_id"
-                                 referencedTableName="goods" referencedColumnNames="id"
-                                 constraintName="fk_inventory_goods"/>
-
-        <addForeignKeyConstraint baseTableName="inventory" baseColumnNames="warehouse_id"
-                                 referencedTableName="warehouse" referencedColumnNames="id"
-                                 constraintName="fk_inventory_warehouse"/>
-    </changeSet>
-
-</databaseChangeLog>
-
-
-
-package org.policy.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-
-import java.time.LocalDate;
-
-@Entity
-@Table(name = "goods_review")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class GoodsReview {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @OneToOne
-    @JoinColumn(name = "goods_id", unique = true)
-    private Goods goods;
-
-    private String status;
-
-    private String comment;
-
-    @Column(name = "review_date")
-    private LocalDate reviewDate;
+    @PostMapping
+    public GoodsDTO createGoods(@RequestBody GoodsDTO dto) {
+        return goodsService.createGoods(dto);
+    }
 }
 
 
 
-package org.policy.entity;
+// GoodsServiceTest.java
+package com.example.inventory.service;
 
-import jakarta.persistence.*;
-import lombok.*;
+import com.example.inventory.dto.GoodsDTO;
+import com.example.inventory.entity.Category;
+import com.example.inventory.entity.Goods;
+import com.example.inventory.entity.User;
+import com.example.inventory.mapper.GoodsMapper;
+import com.example.inventory.repository.CategoryRepository;
+import com.example.inventory.repository.GoodsRepository;
+import com.example.inventory.repository.UserRepository;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
-@Entity
-@Table(name = "warehouse")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Warehouse {
+import java.util.Optional;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-    private String name;
+class GoodsServiceTest {
 
-    private String location;
+    @Test
+    void testCreateGoods() {
+        GoodsRepository goodsRepository = mock(GoodsRepository.class);
+        CategoryRepository categoryRepository = mock(CategoryRepository.class);
+        UserRepository userRepository = mock(UserRepository.class);
+        GoodsMapper goodsMapper = new GoodsMapper();
+
+        GoodsService service = new GoodsService(goodsRepository, categoryRepository, userRepository, goodsMapper);
+
+        GoodsDTO dto = new GoodsDTO();
+        dto.setName("Apple");
+        dto.setQuantity(100);
+        dto.setCategoryId(1L);
+        dto.setUserId(1L);
+
+        Category category = new Category();
+        category.setId(1L);
+        User user = new User();
+        user.setId(1L);
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(goodsRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        GoodsDTO saved = service.createGoods(dto);
+        assertEquals("Apple", saved.getName());
+    }
 }
 
 
-package org.policy.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
 
-import java.time.LocalDate;
 
-@Entity
-@Table(name = "inventory")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Inventory {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @OneToOne
-    @JoinColumn(name = "goods_id", unique = true)
-    private Goods goods;
-
-    private Integer quantity;
-
-    @Column(name = "warehouse_location")
-    private String warehouseLocation;
-
-    @Column(name = "date_added")
-    private LocalDate dateAdded;
-
-    @ManyToOne
-    @JoinColumn(name = "warehouse_id")
-    private Warehouse warehouse;
-}
 
 
 
