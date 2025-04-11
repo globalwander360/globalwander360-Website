@@ -1,47 +1,27 @@
-Great! For Day 4: Category Management (Admin), the goal is to allow Admin users to create and manage categories. This includes:
-
-Backend:
-
-Category DTO
-
-Category Mapper
-
-Category Service
-
-Category Controller
-
-CategoryRepository (already created)
-
-
-
-Here’s the complete Day 4 project folder structure and code for the backend:
+Here's the complete backend structure and full source code for Day 4: Category Management (Admin). This includes the remaining components: DTO, Mapper, Service, Controller.
 
 
 ---
 
-Folder Structure (Backend - Spring Boot)
+Folder Structure
 
-src/main/java/org/policy
-│
-├── controller
-│   └── CategoryController.java
-│
-├── dto
-│   └── CategoryDTO.java
-│
-├── entity
-│   └── Category.java        (Already Created)
-│
-├── mapper
-│   └── CategoryMapper.java
-│
-├── repository
-│   └── CategoryRepository.java  (Already Created)
-│
-├── service
-│   └── CategoryService.java
-│
-└── InventoryManagementApplication.java
+src
+└── main
+    └── java
+        └── org
+            └── policy
+                ├── controller
+                │   └── CategoryController.java
+                ├── dto
+                │   └── CategoryDTO.java
+                ├── entity
+                │   └── Category.java         // already created
+                ├── mapper
+                │   └── CategoryMapper.java
+                ├── repository
+                │   └── CategoryRepository.java
+                └── service
+                    └── CategoryService.java
 
 
 ---
@@ -50,9 +30,12 @@ src/main/java/org/policy
 
 package org.policy.dto;
 
-import lombok.Data;
+import lombok.*;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class CategoryDTO {
     private Long id;
     private String name;
@@ -76,6 +59,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class CategoryMapper {
 
+    public CategoryDTO toDTO(Category category) {
+        return CategoryDTO.builder()
+                .id(category.getId())
+                .name(category.getName())
+                .description(category.getDescription())
+                .storageRequirements(category.getStorageRequirements())
+                .isPerishable(category.getIsPerishable())
+                .shelfLife(category.getShelfLife())
+                .build();
+    }
+
     public Category toEntity(CategoryDTO dto) {
         return Category.builder()
                 .id(dto.getId())
@@ -86,87 +80,77 @@ public class CategoryMapper {
                 .shelfLife(dto.getShelfLife())
                 .build();
     }
-
-    public CategoryDTO toDto(Category entity) {
-        CategoryDTO dto = new CategoryDTO();
-        dto.setId(entity.getId());
-        dto.setName(entity.getName());
-        dto.setDescription(entity.getDescription());
-        dto.setStorageRequirements(entity.getStorageRequirements());
-        dto.setIsPerishable(entity.getIsPerishable());
-        dto.setShelfLife(entity.getShelfLife());
-        return dto;
-    }
 }
 
 
 ---
 
-3. CategoryService.java
+3. CategoryRepository.java
+
+package org.policy.repository;
+
+import org.policy.entity.Category;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface CategoryRepository extends JpaRepository<Category, Long> {
+    Optional<Category> findByName(String name);
+    boolean existsByName(String name);
+}
+
+
+---
+
+4. CategoryService.java
 
 package org.policy.service;
 
-import lombok.RequiredArgsConstructor;
 import org.policy.dto.CategoryDTO;
 import org.policy.entity.Category;
 import org.policy.mapper.CategoryMapper;
 import org.policy.repository.CategoryRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class CategoryService {
 
-    private final CategoryRepository categoryRepository;
-    private final CategoryMapper categoryMapper;
+    @Autowired
+    private CategoryRepository categoryRepository;
 
-    public CategoryDTO create(CategoryDTO dto) {
+    @Autowired
+    private CategoryMapper categoryMapper;
+
+    public CategoryDTO createCategory(CategoryDTO dto) {
+        if (categoryRepository.existsByName(dto.getName())) {
+            throw new RuntimeException("Category name must be unique");
+        }
         Category category = categoryMapper.toEntity(dto);
-        return categoryMapper.toDto(categoryRepository.save(category));
+        return categoryMapper.toDTO(categoryRepository.save(category));
     }
 
-    public List<CategoryDTO> getAll() {
+    public List<CategoryDTO> getAllCategories() {
         return categoryRepository.findAll()
                 .stream()
-                .map(categoryMapper::toDto)
+                .map(categoryMapper::toDTO)
                 .collect(Collectors.toList());
-    }
-
-    public CategoryDTO getById(Long id) {
-        return categoryRepository.findById(id)
-                .map(categoryMapper::toDto)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-    }
-
-    public void delete(Long id) {
-        categoryRepository.deleteById(id);
-    }
-
-    public CategoryDTO update(Long id, CategoryDTO dto) {
-        Category existing = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
-        existing.setName(dto.getName());
-        existing.setDescription(dto.getDescription());
-        existing.setStorageRequirements(dto.getStorageRequirements());
-        existing.setIsPerishable(dto.getIsPerishable());
-        existing.setShelfLife(dto.getShelfLife());
-        return categoryMapper.toDto(categoryRepository.save(existing));
     }
 }
 
 
 ---
 
-4. CategoryController.java
+5. CategoryController.java
 
 package org.policy.controller;
 
-import lombok.RequiredArgsConstructor;
 import org.policy.dto.CategoryDTO;
 import org.policy.service.CategoryService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -174,40 +158,34 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/categories")
-@RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class CategoryController {
 
-    private final CategoryService categoryService;
+    @Autowired
+    private CategoryService categoryService;
 
     @PostMapping
-    public ResponseEntity<CategoryDTO> create(@RequestBody CategoryDTO dto) {
-        return ResponseEntity.ok(categoryService.create(dto));
+    public ResponseEntity<CategoryDTO> createCategory(@RequestBody CategoryDTO dto) {
+        return ResponseEntity.ok(categoryService.createCategory(dto));
     }
 
     @GetMapping
-    public ResponseEntity<List<CategoryDTO>> getAll() {
-        return ResponseEntity.ok(categoryService.getAll());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<CategoryDTO> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.getById(id));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<CategoryDTO> update(@PathVariable Long id, @RequestBody CategoryDTO dto) {
-        return ResponseEntity.ok(categoryService.update(id, dto));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        categoryService.delete(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
+        return ResponseEntity.ok(categoryService.getAllCategories());
     }
 }
 
 
 ---
 
-Let me know when you're ready for the Angular frontend part of Day 4 (Admin UI for Category form and listing with PrimeNG & Reactive Forms).
+Let me know if you also want:
+
+Angular frontend form + integration
+
+Update/delete APIs
+
+Custom exceptions or validation handling
+
+
+Ready to move on to Day 5: Quality Check (Logistics Coordinator)?
 
