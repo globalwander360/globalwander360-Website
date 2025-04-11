@@ -1,204 +1,187 @@
-Great! Let's move to Day 6: Inventory Update (After Approval).
-Objective: Insert only approved goods into the inventory table.
+Great! Here is the complete backend structure with full internal code for Day 7 (Reporting - Backend Logic) of your Inventory Management Module project.
 
 
 ---
 
-Day 6 Backend Folder Structure:
+Day 7: Reporting Backend Structure
 
-src/
-└── main/
-    ├── java/
-    │   └── org/
-    │       └── policy/
-    │           ├── controller/
-    │           │   └── InventoryController.java
-    │           ├── dto/
-    │           │   └── InventoryDto.java
-    │           ├── mapper/
-    │           │   └── InventoryMapper.java
-    │           ├── repository/
-    │           │   └── InventoryRepository.java
-    │           ├── service/
-    │           │   └── InventoryService.java
-    │           └── entity/
-    │               └── Inventory.java (Already Done)
-    └── resources/
-        └── db/
-            └── changelog/
-                └── db.changelog-master.xml (Already includes Inventory)
+1. Package Structure
+
+src/main/java/org/policy/
+├── controller/
+│   └── ReportController.java
+├── dto/
+│   ├── CategoryGoodsReportDto.java
+│   ├── GoodsStatusCountDto.java
+│   └── RejectionSummaryDto.java
+├── repository/
+│   └── ReportRepository.java
+├── service/
+│   └── ReportService.java
+└── InventoryManagementApplication.java
 
 
 ---
 
-1. InventoryDto.java
+2. DTOs
+
+CategoryGoodsReportDto.java
 
 package org.policy.dto;
 
-import lombok.*;
-
-import java.time.LocalDate;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class InventoryDto {
-    private Long goodsId;
-    private Integer quantity;
-    private String warehouseLocation;
-    private LocalDate dateAdded;
-    private Long warehouseId;
+public class CategoryGoodsReportDto {
+    private String categoryName;
+    private Long totalGoods;
+}
+
+GoodsStatusCountDto.java
+
+package org.policy.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
+public class GoodsStatusCountDto {
+    private String status;
+    private Long count;
+}
+
+RejectionSummaryDto.java
+
+package org.policy.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
+public class RejectionSummaryDto {
+    private String comment;
+    private Long count;
 }
 
 
 ---
 
-2. InventoryRepository.java
+3. Repository
+
+ReportRepository.java
 
 package org.policy.repository;
 
-import org.policy.entity.Inventory;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.Optional;
-
-public interface InventoryRepository extends JpaRepository<Inventory, Long> {
-    Optional<Inventory> findByGoodsId(Long goodsId);
-}
-
-
----
-
-3. InventoryMapper.java
-
-package org.policy.mapper;
-
-import org.policy.dto.InventoryDto;
+import org.policy.dto.CategoryGoodsReportDto;
+import org.policy.dto.GoodsStatusCountDto;
+import org.policy.dto.RejectionSummaryDto;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Repository;
 import org.policy.entity.Goods;
-import org.policy.entity.Inventory;
-import org.policy.entity.Warehouse;
-import org.springframework.stereotype.Component;
 
-@Component
-public class InventoryMapper {
-    public Inventory toEntity(InventoryDto dto, Goods goods, Warehouse warehouse) {
-        return Inventory.builder()
-                .goods(goods)
-                .quantity(dto.getQuantity())
-                .warehouseLocation(dto.getWarehouseLocation())
-                .dateAdded(dto.getDateAdded())
-                .warehouse(warehouse)
-                .build();
-    }
+import java.util.List;
+
+@Repository
+public interface ReportRepository extends CrudRepository<Goods, Long> {
+
+    @Query("SELECT new org.policy.dto.CategoryGoodsReportDto(c.name, COUNT(g)) " +
+           "FROM Goods g JOIN g.category c GROUP BY c.name")
+    List<CategoryGoodsReportDto> countGoodsByCategory();
+
+    @Query("SELECT new org.policy.dto.GoodsStatusCountDto(g.status, COUNT(g)) " +
+           "FROM Goods g GROUP BY g.status")
+    List<GoodsStatusCountDto> countGoodsByStatus();
+
+    @Query("SELECT new org.policy.dto.RejectionSummaryDto(r.comment, COUNT(r)) " +
+           "FROM GoodsReview r WHERE r.status = 'REJECTED' GROUP BY r.comment")
+    List<RejectionSummaryDto> rejectionSummary();
 }
 
 
 ---
 
-4. InventoryService.java
+4. Service
+
+ReportService.java
 
 package org.policy.service;
 
 import lombok.RequiredArgsConstructor;
-import org.policy.dto.InventoryDto;
-import org.policy.entity.Goods;
-import org.policy.entity.Inventory;
-import org.policy.entity.Warehouse;
-import org.policy.mapper.InventoryMapper;
-import org.policy.repository.GoodsRepository;
-import org.policy.repository.InventoryRepository;
-import org.policy.repository.WarehouseRepository;
+import org.policy.dto.CategoryGoodsReportDto;
+import org.policy.dto.GoodsStatusCountDto;
+import org.policy.dto.RejectionSummaryDto;
+import org.policy.repository.ReportRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class InventoryService {
+public class ReportService {
 
-    private final InventoryRepository inventoryRepository;
-    private final GoodsRepository goodsRepository;
-    private final WarehouseRepository warehouseRepository;
-    private final InventoryMapper inventoryMapper;
+    private final ReportRepository reportRepository;
 
-    @Transactional
-    public Inventory addToInventory(InventoryDto dto) {
-        // Check for duplicate entry
-        Optional<Inventory> existing = inventoryRepository.findByGoodsId(dto.getGoodsId());
-        if (existing.isPresent()) {
-            throw new IllegalStateException("Inventory entry already exists for this goods item.");
-        }
+    public List<CategoryGoodsReportDto> getGoodsByCategory() {
+        return reportRepository.countGoodsByCategory();
+    }
 
-        Goods goods = goodsRepository.findById(dto.getGoodsId())
-                .orElseThrow(() -> new IllegalArgumentException("Goods not found"));
+    public List<GoodsStatusCountDto> getGoodsStatusCounts() {
+        return reportRepository.countGoodsByStatus();
+    }
 
-        if (!"APPROVED".equalsIgnoreCase(goods.getStatus())) {
-            throw new IllegalStateException("Only approved goods can be added to inventory.");
-        }
-
-        Warehouse warehouse = warehouseRepository.findById(dto.getWarehouseId())
-                .orElseThrow(() -> new IllegalArgumentException("Warehouse not found"));
-
-        Inventory inventory = inventoryMapper.toEntity(dto, goods, warehouse);
-        return inventoryRepository.save(inventory);
+    public List<RejectionSummaryDto> getRejectionReasons() {
+        return reportRepository.rejectionSummary();
     }
 }
 
 
 ---
 
-5. InventoryController.java
+5. Controller
+
+ReportController.java
 
 package org.policy.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.policy.dto.InventoryDto;
-import org.policy.entity.Inventory;
-import org.policy.service.InventoryService;
-import org.springframework.http.ResponseEntity;
+import org.policy.dto.CategoryGoodsReportDto;
+import org.policy.dto.GoodsStatusCountDto;
+import org.policy.dto.RejectionSummaryDto;
+import org.policy.service.ReportService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/api/inventory")
+@RequestMapping("/api/report")
 @RequiredArgsConstructor
-public class InventoryController {
+public class ReportController {
 
-    private final InventoryService inventoryService;
+    private final ReportService reportService;
 
-    @PostMapping
-    public ResponseEntity<Inventory> addInventory(@RequestBody InventoryDto dto) {
-        Inventory created = inventoryService.addToInventory(dto);
-        return ResponseEntity.ok(created);
+    @GetMapping("/category")
+    public List<CategoryGoodsReportDto> getGoodsByCategory() {
+        return reportService.getGoodsByCategory();
+    }
+
+    @GetMapping("/status")
+    public List<GoodsStatusCountDto> getGoodsStatusCounts() {
+        return reportService.getGoodsStatusCounts();
+    }
+
+    @GetMapping("/rejections")
+    public List<RejectionSummaryDto> getRejectionReasons() {
+        return reportService.getRejectionReasons();
     }
 }
 
 
 ---
 
-(If Not Created Earlier) WarehouseRepository.java
+Let me know when you're ready to start Day 8 (Generate Excel Reports) and I’ll give you that full backend code too.
 
-package org.policy.repository;
-
-import org.policy.entity.Warehouse;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
-}
-
-
----
-
-✅ Summary:
-
-You can now insert only approved goods into inventory.
-
-Prevents duplicate insertion.
-
-Includes complete InventoryController, InventoryService, InventoryDto, and Mapper.
-
-Uses existing entities: Goods, Warehouse, Inventory.
-
-
-Let me know if you want to add GET APIs, or shall we move to Day 7 (Reporting Backend Logic)?
