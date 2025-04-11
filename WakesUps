@@ -1,214 +1,58 @@
-Great! For Day 3: Goods Registration, here's the full updated runnable code and project structure to support the task, assuming your Day 2 DTOs are correct.
+Great! For Day 3: Goods Registration (without test code), here's the updated structure and full source code for your Spring Boot backend.
 
 
 ---
 
-Day 3 Directory Structure
+Day 3 - Folder Structure (Backend)
 
-src/main/java/com/example/inventory/
-├── controller/
+src/main/java/com/example/inventory
+├── controller
 │   └── GoodsController.java
-├── dto/
-│   └── GoodsDTO.java         (From Day 2)
-├── entity/
+├── dto
+│   └── GoodsDTO.java
+├── entity
+│   ├── Category.java
 │   ├── Goods.java
-│   └── Category.java         (used for mapping)
-├── mapper/
-│   ├── GoodsMapper.java
-│   └── CategoryMapper.java   (added in Day 3)
-├── repository/
-│   ├── GoodsRepository.java
-│   └── CategoryRepository.java
-├── service/
+│   └── User.java
+├── mapper
+│   ├── CategoryMapper.java
+│   └── GoodsMapper.java
+├── repository
+│   ├── CategoryRepository.java
+│   └── GoodsRepository.java
+├── service
 │   ├── GoodsService.java
-│   └── impl/
+│   └── impl
 │       └── GoodsServiceImpl.java
-
-src/test/java/com/example/inventory/
-├── service/
-│   └── GoodsServiceImplTest.java
+└── InventoryManagementApplication.java
 
 
 ---
 
-1. GoodsMapper.java
+1. GoodsDTO.java
 
-@Mapper(componentModel = "spring", uses = {CategoryMapper.class})
-public interface GoodsMapper {
-    GoodsDTO toDto(Goods goods);
-    Goods toEntity(GoodsDTO dto);
-}
+package com.example.inventory.dto;
 
+import lombok.Data;
 
----
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
-2. CategoryMapper.java
-
-@Mapper(componentModel = "spring")
-public interface CategoryMapper {
-    CategoryDTO toDto(Category category);
-    Category toEntity(CategoryDTO dto);
-}
-
-
----
-
-3. GoodsService.java
-
-public interface GoodsService {
-    GoodsDTO save(GoodsDTO goodsDTO);
-    GoodsDTO findById(Long id);
-}
-
-
----
-
-4. GoodsServiceImpl.java
-
-@Service
-@RequiredArgsConstructor
-public class GoodsServiceImpl implements GoodsService {
-    private final GoodsRepository goodsRepository;
-    private final GoodsMapper goodsMapper;
-
-    @Override
-    public GoodsDTO save(GoodsDTO goodsDTO) {
-        Goods entity = goodsMapper.toEntity(goodsDTO);
-        return goodsMapper.toDto(goodsRepository.save(entity));
-    }
-
-    @Override
-    public GoodsDTO findById(Long id) {
-        return goodsRepository.findById(id)
-                .map(goodsMapper::toDto)
-                .orElseThrow(() -> new RuntimeException("Goods not found"));
-    }
-}
-
-
----
-
-5. GoodsRepository.java
-
-@Repository
-public interface GoodsRepository extends JpaRepository<Goods, Long> {
-}
-
-
----
-
-6. GoodsController.java
-
-@RestController
-@RequestMapping("/api/goods")
-@RequiredArgsConstructor
-public class GoodsController {
-    private final GoodsService goodsService;
-
-    @PostMapping
-    public ResponseEntity<GoodsDTO> create(@RequestBody GoodsDTO dto) {
-        return new ResponseEntity<>(goodsService.save(dto), HttpStatus.CREATED);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<GoodsDTO> get(@PathVariable Long id) {
-        return ResponseEntity.ok(goodsService.findById(id));
-    }
-}
-
-
----
-
-7. GoodsServiceImplTest.java
-
-@ExtendWith(MockitoExtension.class)
-public class GoodsServiceImplTest {
-
-    @InjectMocks
-    private GoodsServiceImpl goodsService;
-
-    @Mock
-    private GoodsRepository goodsRepository;
-
-    @Mock
-    private GoodsMapper goodsMapper;
-
-    @Test
-    void testSave() {
-        GoodsDTO dto = new GoodsDTO();
-        Goods entity = new Goods();
-
-        when(goodsMapper.toEntity(dto)).thenReturn(entity);
-        when(goodsRepository.save(entity)).thenReturn(entity);
-        when(goodsMapper.toDto(entity)).thenReturn(dto);
-
-        GoodsDTO saved = goodsService.save(dto);
-
-        assertNotNull(saved);
-        verify(goodsRepository).save(entity);
-    }
-
-    @Test
-    void testFindById() {
-        Goods entity = new Goods();
-        GoodsDTO dto = new GoodsDTO();
-
-        when(goodsRepository.findById(1L)).thenReturn(Optional.of(entity));
-        when(goodsMapper.toDto(entity)).thenReturn(dto);
-
-        GoodsDTO found = goodsService.findById(1L);
-
-        assertNotNull(found);
-        verify(goodsRepository).findById(1L);
-    }
-}
-
-
----
-
-Would you like me to also provide the updated Goods.java and Category.java entity files to make sure everything is aligned?
-
-
-
-Perfect! Here's the updated and complete entity code for Day 3: Goods Registration — these match your DTOs and mapper logic to ensure smooth conversion and persistence.
-
-
----
-
-1. Category.java
-
-package com.example.inventory.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-
-@Entity
-@Table(name = "category")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Category {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+@Data
+public class GoodsDTO {
     private Long id;
-
-    @Column(nullable = false, unique = true, length = 50)
     private String name;
-
-    @Column(length = 500)
-    private String description;
-
-    @Column(name = "storage_requirements", length = 500)
-    private String storageRequirements;
-
-    @Column(name = "is_perishable")
-    private Boolean isPerishable;
-
-    @Column(name = "shelf_life")
-    private Integer shelfLife;
+    private Integer quantity;
+    private String unitOfMeasure;
+    private String location;
+    private LocalDate expiryDate;
+    private LocalDate acquisitionDate;
+    private Integer minimumStockLevel;
+    private BigDecimal price;
+    private String supplier;
+    private String status;
+    private Long userId;
+    private Long categoryId;
 }
 
 
@@ -225,12 +69,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "goods")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Goods {
 
     @Id
@@ -238,28 +80,19 @@ public class Goods {
     private Long id;
 
     private String name;
-
     private Integer quantity;
-
-    @Column(name = "unit_of_measure")
     private String unitOfMeasure;
-
     private String location;
-
-    @Column(name = "expiry_date")
     private LocalDate expiryDate;
-
-    @Column(name = "acquisition_date")
     private LocalDate acquisitionDate;
-
-    @Column(name = "minimum_stock_level")
     private Integer minimumStockLevel;
-
     private BigDecimal price;
-
     private String supplier;
-
     private String status;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @ManyToOne
     @JoinColumn(name = "category_id")
@@ -269,6 +102,149 @@ public class Goods {
 
 ---
 
-These entities are annotated with Jakarta (if you're using Spring Boot 3+) and match the fields used in your mappers and service layer. Let me know if you'd like the Liquibase XML for these tables verified too.
+3. GoodsRepository.java
 
+package com.example.inventory.repository;
+
+import com.example.inventory.entity.Goods;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface GoodsRepository extends JpaRepository<Goods, Long> {
+}
+
+
+---
+
+4. GoodsMapper.java
+
+package com.example.inventory.mapper;
+
+import com.example.inventory.dto.GoodsDTO;
+import com.example.inventory.entity.Category;
+import com.example.inventory.entity.Goods;
+import com.example.inventory.entity.User;
+import org.springframework.stereotype.Component;
+
+@Component
+public class GoodsMapper {
+
+    public Goods toEntity(GoodsDTO dto, User user, Category category) {
+        Goods goods = new Goods();
+        goods.setId(dto.getId());
+        goods.setName(dto.getName());
+        goods.setQuantity(dto.getQuantity());
+        goods.setUnitOfMeasure(dto.getUnitOfMeasure());
+        goods.setLocation(dto.getLocation());
+        goods.setExpiryDate(dto.getExpiryDate());
+        goods.setAcquisitionDate(dto.getAcquisitionDate());
+        goods.setMinimumStockLevel(dto.getMinimumStockLevel());
+        goods.setPrice(dto.getPrice());
+        goods.setSupplier(dto.getSupplier());
+        goods.setStatus(dto.getStatus());
+        goods.setUser(user);
+        goods.setCategory(category);
+        return goods;
+    }
+}
+
+
+---
+
+5. CategoryMapper.java
+
+package com.example.inventory.mapper;
+
+import com.example.inventory.entity.Category;
+import org.springframework.stereotype.Component;
+
+@Component
+public class CategoryMapper {
+    public Category toEntity(Long id) {
+        Category category = new Category();
+        category.setId(id);
+        return category;
+    }
+}
+
+
+---
+
+6. GoodsService.java
+
+package com.example.inventory.service;
+
+import com.example.inventory.dto.GoodsDTO;
+
+public interface GoodsService {
+    void registerGoods(GoodsDTO dto);
+}
+
+
+---
+
+7. GoodsServiceImpl.java
+
+package com.example.inventory.service.impl;
+
+import com.example.inventory.dto.GoodsDTO;
+import com.example.inventory.entity.Category;
+import com.example.inventory.entity.Goods;
+import com.example.inventory.entity.User;
+import com.example.inventory.mapper.GoodsMapper;
+import com.example.inventory.repository.CategoryRepository;
+import com.example.inventory.repository.GoodsRepository;
+import com.example.inventory.repository.UserRepository;
+import com.example.inventory.service.GoodsService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class GoodsServiceImpl implements GoodsService {
+
+    private final GoodsRepository goodsRepository;
+    private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
+    private final GoodsMapper goodsMapper;
+
+    @Override
+    public void registerGoods(GoodsDTO dto) {
+        User user = userRepository.findById(dto.getUserId()).orElseThrow();
+        Category category = categoryRepository.findById(dto.getCategoryId()).orElseThrow();
+        Goods goods = goodsMapper.toEntity(dto, user, category);
+        goodsRepository.save(goods);
+    }
+}
+
+
+---
+
+8. GoodsController.java
+
+package com.example.inventory.controller;
+
+import com.example.inventory.dto.GoodsDTO;
+import com.example.inventory.service.GoodsService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/goods")
+@RequiredArgsConstructor
+public class GoodsController {
+
+    private final GoodsService goodsService;
+
+    @PostMapping
+    public ResponseEntity<String> registerGoods(@RequestBody GoodsDTO dto) {
+        goodsService.registerGoods(dto);
+        return ResponseEntity.ok("Goods registered successfully");
+    }
+}
+
+
+---
+
+If you're ready, I can also generate the Liquibase XML file for Day 3 to match the above structure. Let me know if you want that.
 
