@@ -1,68 +1,94 @@
-Great! For Day 5: Quality Check (Logistics Coordinator), we’ll implement backend functionality for reviewing goods (approve/reject), update goods status, and save review details.
+Great! Let's move to Day 6: Inventory Update (After Approval).
+Objective: Insert only approved goods into the inventory table.
 
 
 ---
 
-Backend Folder Structure (Additions for Day 5)
+Day 6 Backend Folder Structure:
 
 src/
 └── main/
-    └── java/
-        └── org/
-            └── policy/
-                ├── controller/
-                │   └── GoodsReviewController.java
-                ├── dto/
-                │   └── GoodsReviewRequestDto.java
-                ├── mapper/
-                │   └── GoodsReviewMapper.java
-                ├── repository/
-                │   └── GoodsReviewRepository.java
-                ├── service/
-                │   ├── GoodsReviewService.java
-                │   └── impl/
-                │       └── GoodsReviewServiceImpl.java
+    ├── java/
+    │   └── org/
+    │       └── policy/
+    │           ├── controller/
+    │           │   └── InventoryController.java
+    │           ├── dto/
+    │           │   └── InventoryDto.java
+    │           ├── mapper/
+    │           │   └── InventoryMapper.java
+    │           ├── repository/
+    │           │   └── InventoryRepository.java
+    │           ├── service/
+    │           │   └── InventoryService.java
+    │           └── entity/
+    │               └── Inventory.java (Already Done)
+    └── resources/
+        └── db/
+            └── changelog/
+                └── db.changelog-master.xml (Already includes Inventory)
 
 
 ---
 
-1. GoodsReviewRequestDto.java
+1. InventoryDto.java
 
 package org.policy.dto;
 
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalDate;
 
 @Data
-public class GoodsReviewRequestDto {
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class InventoryDto {
     private Long goodsId;
-    private String status; // APPROVED or REJECTED
-    private String comment;
-    private LocalDate reviewDate;
+    private Integer quantity;
+    private String warehouseLocation;
+    private LocalDate dateAdded;
+    private Long warehouseId;
 }
 
 
 ---
 
-2. GoodsReviewMapper.java
+2. InventoryRepository.java
+
+package org.policy.repository;
+
+import org.policy.entity.Inventory;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface InventoryRepository extends JpaRepository<Inventory, Long> {
+    Optional<Inventory> findByGoodsId(Long goodsId);
+}
+
+
+---
+
+3. InventoryMapper.java
 
 package org.policy.mapper;
 
-import org.policy.dto.GoodsReviewRequestDto;
+import org.policy.dto.InventoryDto;
 import org.policy.entity.Goods;
-import org.policy.entity.GoodsReview;
+import org.policy.entity.Inventory;
+import org.policy.entity.Warehouse;
 import org.springframework.stereotype.Component;
 
 @Component
-public class GoodsReviewMapper {
-
-    public GoodsReview toEntity(GoodsReviewRequestDto dto, Goods goods) {
-        return GoodsReview.builder()
+public class InventoryMapper {
+    public Inventory toEntity(InventoryDto dto, Goods goods, Warehouse warehouse) {
+        return Inventory.builder()
                 .goods(goods)
-                .status(dto.getStatus())
-                .comment(dto.getComment())
-                .reviewDate(dto.getReviewDate())
+                .quantity(dto.getQuantity())
+                .warehouseLocation(dto.getWarehouseLocation())
+                .dateAdded(dto.getDateAdded())
+                .warehouse(warehouse)
                 .build();
     }
 }
@@ -70,45 +96,19 @@ public class GoodsReviewMapper {
 
 ---
 
-3. GoodsReviewRepository.java
-
-package org.policy.repository;
-
-import org.policy.entity.GoodsReview;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface GoodsReviewRepository extends JpaRepository<GoodsReview, Long> {
-    boolean existsByGoodsId(Long goodsId);
-}
-
-
----
-
-4. GoodsReviewService.java
+4. InventoryService.java
 
 package org.policy.service;
 
-import org.policy.dto.GoodsReviewRequestDto;
-
-public interface GoodsReviewService {
-    void reviewGoods(GoodsReviewRequestDto reviewRequestDto);
-}
-
-
----
-
-5. GoodsReviewServiceImpl.java
-
-package org.policy.service.impl;
-
 import lombok.RequiredArgsConstructor;
-import org.policy.dto.GoodsReviewRequestDto;
+import org.policy.dto.InventoryDto;
 import org.policy.entity.Goods;
-import org.policy.entity.GoodsReview;
-import org.policy.mapper.GoodsReviewMapper;
+import org.policy.entity.Inventory;
+import org.policy.entity.Warehouse;
+import org.policy.mapper.InventoryMapper;
 import org.policy.repository.GoodsRepository;
-import org.policy.repository.GoodsReviewRepository;
-import org.policy.service.GoodsReviewService;
+import org.policy.repository.InventoryRepository;
+import org.policy.repository.WarehouseRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -116,74 +116,89 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class GoodsReviewServiceImpl implements GoodsReviewService {
+public class InventoryService {
 
-    private final GoodsReviewRepository reviewRepository;
+    private final InventoryRepository inventoryRepository;
     private final GoodsRepository goodsRepository;
-    private final GoodsReviewMapper reviewMapper;
+    private final WarehouseRepository warehouseRepository;
+    private final InventoryMapper inventoryMapper;
 
-    @Override
     @Transactional
-    public void reviewGoods(GoodsReviewRequestDto dto) {
-        if (reviewRepository.existsByGoodsId(dto.getGoodsId())) {
-            throw new RuntimeException("Goods already reviewed");
+    public Inventory addToInventory(InventoryDto dto) {
+        // Check for duplicate entry
+        Optional<Inventory> existing = inventoryRepository.findByGoodsId(dto.getGoodsId());
+        if (existing.isPresent()) {
+            throw new IllegalStateException("Inventory entry already exists for this goods item.");
         }
 
-        Optional<Goods> optionalGoods = goodsRepository.findById(dto.getGoodsId());
-        if (optionalGoods.isEmpty()) {
-            throw new RuntimeException("Goods not found");
+        Goods goods = goodsRepository.findById(dto.getGoodsId())
+                .orElseThrow(() -> new IllegalArgumentException("Goods not found"));
+
+        if (!"APPROVED".equalsIgnoreCase(goods.getStatus())) {
+            throw new IllegalStateException("Only approved goods can be added to inventory.");
         }
 
-        Goods goods = optionalGoods.get();
-        goods.setStatus(dto.getStatus()); // Update goods status
-        goodsRepository.save(goods); // Save updated status
+        Warehouse warehouse = warehouseRepository.findById(dto.getWarehouseId())
+                .orElseThrow(() -> new IllegalArgumentException("Warehouse not found"));
 
-        GoodsReview review = reviewMapper.toEntity(dto, goods);
-        reviewRepository.save(review); // Save review
+        Inventory inventory = inventoryMapper.toEntity(dto, goods, warehouse);
+        return inventoryRepository.save(inventory);
     }
 }
 
 
 ---
 
-6. GoodsReviewController.java
+5. InventoryController.java
 
 package org.policy.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.policy.dto.GoodsReviewRequestDto;
-import org.policy.service.GoodsReviewService;
+import org.policy.dto.InventoryDto;
+import org.policy.entity.Inventory;
+import org.policy.service.InventoryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/review")
+@RequestMapping("/api/inventory")
 @RequiredArgsConstructor
-public class GoodsReviewController {
+public class InventoryController {
 
-    private final GoodsReviewService goodsReviewService;
+    private final InventoryService inventoryService;
 
     @PostMapping
-    public ResponseEntity<String> reviewGoods(@RequestBody GoodsReviewRequestDto dto) {
-        goodsReviewService.reviewGoods(dto);
-        return ResponseEntity.ok("Review submitted successfully");
+    public ResponseEntity<Inventory> addInventory(@RequestBody InventoryDto dto) {
+        Inventory created = inventoryService.addToInventory(dto);
+        return ResponseEntity.ok(created);
     }
 }
 
 
 ---
 
-Updated Code in Existing File
+(If Not Created Earlier) WarehouseRepository.java
 
-Goods.java (Entity Update)
+package org.policy.repository;
 
-Make sure this has:
+import org.policy.entity.Warehouse;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@OneToOne(mappedBy = "goods", cascade = CascadeType.ALL)
-private GoodsReview goodsReview;
+public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
+}
 
 
 ---
 
-Let me know when you're ready for Day 6, or if you want Angular part of Day 5.
+✅ Summary:
 
+You can now insert only approved goods into inventory.
+
+Prevents duplicate insertion.
+
+Includes complete InventoryController, InventoryService, InventoryDto, and Mapper.
+
+Uses existing entities: Goods, Warehouse, Inventory.
+
+
+Let me know if you want to add GET APIs, or shall we move to Day 7 (Reporting Backend Logic)?
