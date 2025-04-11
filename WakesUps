@@ -1,83 +1,68 @@
-Here's the complete backend structure and full source code for Day 4: Category Management (Admin). This includes the remaining components: DTO, Mapper, Service, Controller.
+Great! For Day 5: Quality Check (Logistics Coordinator), we’ll implement backend functionality for reviewing goods (approve/reject), update goods status, and save review details.
 
 
 ---
 
-Folder Structure
+Backend Folder Structure (Additions for Day 5)
 
-src
-└── main
-    └── java
-        └── org
-            └── policy
-                ├── controller
-                │   └── CategoryController.java
-                ├── dto
-                │   └── CategoryDTO.java
-                ├── entity
-                │   └── Category.java         // already created
-                ├── mapper
-                │   └── CategoryMapper.java
-                ├── repository
-                │   └── CategoryRepository.java
-                └── service
-                    └── CategoryService.java
+src/
+└── main/
+    └── java/
+        └── org/
+            └── policy/
+                ├── controller/
+                │   └── GoodsReviewController.java
+                ├── dto/
+                │   └── GoodsReviewRequestDto.java
+                ├── mapper/
+                │   └── GoodsReviewMapper.java
+                ├── repository/
+                │   └── GoodsReviewRepository.java
+                ├── service/
+                │   ├── GoodsReviewService.java
+                │   └── impl/
+                │       └── GoodsReviewServiceImpl.java
 
 
 ---
 
-1. CategoryDTO.java
+1. GoodsReviewRequestDto.java
 
 package org.policy.dto;
 
-import lombok.*;
+import lombok.Data;
+
+import java.time.LocalDate;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class CategoryDTO {
-    private Long id;
-    private String name;
-    private String description;
-    private String storageRequirements;
-    private Boolean isPerishable;
-    private Integer shelfLife;
+public class GoodsReviewRequestDto {
+    private Long goodsId;
+    private String status; // APPROVED or REJECTED
+    private String comment;
+    private LocalDate reviewDate;
 }
 
 
 ---
 
-2. CategoryMapper.java
+2. GoodsReviewMapper.java
 
 package org.policy.mapper;
 
-import org.policy.dto.CategoryDTO;
-import org.policy.entity.Category;
+import org.policy.dto.GoodsReviewRequestDto;
+import org.policy.entity.Goods;
+import org.policy.entity.GoodsReview;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CategoryMapper {
+public class GoodsReviewMapper {
 
-    public CategoryDTO toDTO(Category category) {
-        return CategoryDTO.builder()
-                .id(category.getId())
-                .name(category.getName())
-                .description(category.getDescription())
-                .storageRequirements(category.getStorageRequirements())
-                .isPerishable(category.getIsPerishable())
-                .shelfLife(category.getShelfLife())
-                .build();
-    }
-
-    public Category toEntity(CategoryDTO dto) {
-        return Category.builder()
-                .id(dto.getId())
-                .name(dto.getName())
-                .description(dto.getDescription())
-                .storageRequirements(dto.getStorageRequirements())
-                .isPerishable(dto.getIsPerishable())
-                .shelfLife(dto.getShelfLife())
+    public GoodsReview toEntity(GoodsReviewRequestDto dto, Goods goods) {
+        return GoodsReview.builder()
+                .goods(goods)
+                .status(dto.getStatus())
+                .comment(dto.getComment())
+                .reviewDate(dto.getReviewDate())
                 .build();
     }
 }
@@ -85,106 +70,120 @@ public class CategoryMapper {
 
 ---
 
-3. CategoryRepository.java
+3. GoodsReviewRepository.java
 
 package org.policy.repository;
 
-import org.policy.entity.Category;
+import org.policy.entity.GoodsReview;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Optional;
-
-public interface CategoryRepository extends JpaRepository<Category, Long> {
-    Optional<Category> findByName(String name);
-    boolean existsByName(String name);
+public interface GoodsReviewRepository extends JpaRepository<GoodsReview, Long> {
+    boolean existsByGoodsId(Long goodsId);
 }
 
 
 ---
 
-4. CategoryService.java
+4. GoodsReviewService.java
 
 package org.policy.service;
 
-import org.policy.dto.CategoryDTO;
-import org.policy.entity.Category;
-import org.policy.mapper.CategoryMapper;
-import org.policy.repository.CategoryRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.policy.dto.GoodsReviewRequestDto;
 
-import java.util.List;
-import java.util.stream.Collectors;
+public interface GoodsReviewService {
+    void reviewGoods(GoodsReviewRequestDto reviewRequestDto);
+}
+
+
+---
+
+5. GoodsReviewServiceImpl.java
+
+package org.policy.service.impl;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.GoodsReviewRequestDto;
+import org.policy.entity.Goods;
+import org.policy.entity.GoodsReview;
+import org.policy.mapper.GoodsReviewMapper;
+import org.policy.repository.GoodsRepository;
+import org.policy.repository.GoodsReviewRepository;
+import org.policy.service.GoodsReviewService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Service
-public class CategoryService {
+@RequiredArgsConstructor
+public class GoodsReviewServiceImpl implements GoodsReviewService {
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+    private final GoodsReviewRepository reviewRepository;
+    private final GoodsRepository goodsRepository;
+    private final GoodsReviewMapper reviewMapper;
 
-    @Autowired
-    private CategoryMapper categoryMapper;
-
-    public CategoryDTO createCategory(CategoryDTO dto) {
-        if (categoryRepository.existsByName(dto.getName())) {
-            throw new RuntimeException("Category name must be unique");
+    @Override
+    @Transactional
+    public void reviewGoods(GoodsReviewRequestDto dto) {
+        if (reviewRepository.existsByGoodsId(dto.getGoodsId())) {
+            throw new RuntimeException("Goods already reviewed");
         }
-        Category category = categoryMapper.toEntity(dto);
-        return categoryMapper.toDTO(categoryRepository.save(category));
-    }
 
-    public List<CategoryDTO> getAllCategories() {
-        return categoryRepository.findAll()
-                .stream()
-                .map(categoryMapper::toDTO)
-                .collect(Collectors.toList());
+        Optional<Goods> optionalGoods = goodsRepository.findById(dto.getGoodsId());
+        if (optionalGoods.isEmpty()) {
+            throw new RuntimeException("Goods not found");
+        }
+
+        Goods goods = optionalGoods.get();
+        goods.setStatus(dto.getStatus()); // Update goods status
+        goodsRepository.save(goods); // Save updated status
+
+        GoodsReview review = reviewMapper.toEntity(dto, goods);
+        reviewRepository.save(review); // Save review
     }
 }
 
 
 ---
 
-5. CategoryController.java
+6. GoodsReviewController.java
 
 package org.policy.controller;
 
-import org.policy.dto.CategoryDTO;
-import org.policy.service.CategoryService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.GoodsReviewRequestDto;
+import org.policy.service.GoodsReviewService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/api/categories")
-@CrossOrigin(origins = "*")
-public class CategoryController {
+@RequestMapping("/api/review")
+@RequiredArgsConstructor
+public class GoodsReviewController {
 
-    @Autowired
-    private CategoryService categoryService;
+    private final GoodsReviewService goodsReviewService;
 
     @PostMapping
-    public ResponseEntity<CategoryDTO> createCategory(@RequestBody CategoryDTO dto) {
-        return ResponseEntity.ok(categoryService.createCategory(dto));
-    }
-
-    @GetMapping
-    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
-        return ResponseEntity.ok(categoryService.getAllCategories());
+    public ResponseEntity<String> reviewGoods(@RequestBody GoodsReviewRequestDto dto) {
+        goodsReviewService.reviewGoods(dto);
+        return ResponseEntity.ok("Review submitted successfully");
     }
 }
 
 
 ---
 
-Let me know if you also want:
+Updated Code in Existing File
 
-Angular frontend form + integration
+Goods.java (Entity Update)
 
-Update/delete APIs
+Make sure this has:
 
-Custom exceptions or validation handling
+@OneToOne(mappedBy = "goods", cascade = CascadeType.ALL)
+private GoodsReview goodsReview;
 
 
-Ready to move on to Day 5: Quality Check (Logistics Coordinator)?
+---
+
+Let me know when you're ready for Day 6, or if you want Angular part of Day 5.
+
