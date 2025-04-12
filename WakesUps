@@ -1,227 +1,197 @@
-Great! Here's the complete backend structure and source code for Day 9: Warehouse Management, along with updates to previously created files where necessary.
+Great! Let's move on to Day 10: Advanced Filtering and Pagination for the backend.
 
 
 ---
 
-Day 9 – Backend Folder Structure
+Day 10 Backend Structure
+
+Objective: Add filtering, sorting, and pagination to Goods and Inventory listing endpoints.
+
+New or Updated Files
 
 src/main/java/org/policy/
 │
 ├── controller/
-│   └── WarehouseController.java
+│   ├── GoodsController.java         // Updated
+│   └── InventoryController.java     // New
 │
 ├── dto/
-│   └── WarehouseDto.java
-│
-├── entity/
-│   └── Warehouse.java       (Already created)
-│
-├── mapper/
-│   └── WarehouseMapper.java
+│   └── FilterRequest.java           // New (for dynamic filters)
 │
 ├── repository/
-│   └── WarehouseRepository.java
+│   ├── GoodsRepository.java         // Updated
+│   └── InventoryRepository.java     // New
 │
 ├── service/
-│   ├── WarehouseService.java
+│   ├── GoodsService.java            // Updated
+│   ├── InventoryService.java        // New
 │   └── impl/
-│       └── WarehouseServiceImpl.java
+│       ├── GoodsServiceImpl.java    // Updated
+│       └── InventoryServiceImpl.java// New
 
 
 ---
 
-1. WarehouseDto.java
+1. FilterRequest.java
 
 package org.policy.dto;
 
-import lombok.*;
+import lombok.Data;
+import java.time.LocalDate;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class WarehouseDto {
-    private Long id;
-    private String name;
-    private String location;
+public class FilterRequest {
+    private String status;
+    private Long categoryId;
+    private Long warehouseId;
+    private LocalDate fromDate;
+    private LocalDate toDate;
+    private String sortBy = "id";
+    private String direction = "asc";
+    private int page = 0;
+    private int size = 10;
 }
 
 
 ---
 
-2. WarehouseRepository.java
+2. GoodsRepository.java (Updated)
 
-package org.policy.repository;
-
-import org.policy.entity.Warehouse;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
-    boolean existsByName(String name);
+@Repository
+public interface GoodsRepository extends JpaRepository<Goods, Long>, JpaSpecificationExecutor<Goods> {
 }
 
 
 ---
 
-3. WarehouseMapper.java
+3. InventoryRepository.java (New)
 
-package org.policy.mapper;
-
-import org.policy.dto.WarehouseDto;
-import org.policy.entity.Warehouse;
-import org.springframework.stereotype.Component;
-
-@Component
-public class WarehouseMapper {
-
-    public Warehouse toEntity(WarehouseDto dto) {
-        return Warehouse.builder()
-                .id(dto.getId())
-                .name(dto.getName())
-                .location(dto.getLocation())
-                .build();
-    }
-
-    public WarehouseDto toDto(Warehouse entity) {
-        return WarehouseDto.builder()
-                .id(entity.getId())
-                .name(entity.getName())
-                .location(entity.getLocation())
-                .build();
-    }
+@Repository
+public interface InventoryRepository extends JpaRepository<Inventory, Long>, JpaSpecificationExecutor<Inventory> {
 }
 
 
 ---
 
-4. WarehouseService.java
+4. GoodsService.java (Updated)
 
-package org.policy.service;
+Page<GoodsDto> getFilteredGoods(FilterRequest filterRequest);
 
-import org.policy.dto.WarehouseDto;
-import java.util.List;
 
-public interface WarehouseService {
-    WarehouseDto create(WarehouseDto dto);
-    WarehouseDto update(Long id, WarehouseDto dto);
-    void delete(Long id);
-    WarehouseDto getById(Long id);
-    List<WarehouseDto> getAll();
+---
+
+5. GoodsServiceImpl.java (Updated)
+
+@Override
+public Page<GoodsDto> getFilteredGoods(FilterRequest request) {
+    Pageable pageable = PageRequest.of(
+        request.getPage(),
+        request.getSize(),
+        Sort.by(Sort.Direction.fromString(request.getDirection()), request.getSortBy())
+    );
+
+    Specification<Goods> spec = (root, query, cb) -> {
+        List<Predicate> predicates = new ArrayList<>();
+        if (request.getStatus() != null) {
+            predicates.add(cb.equal(root.get("status"), request.getStatus()));
+        }
+        if (request.getCategoryId() != null) {
+            predicates.add(cb.equal(root.get("category").get("id"), request.getCategoryId()));
+        }
+        if (request.getFromDate() != null && request.getToDate() != null) {
+            predicates.add(cb.between(root.get("acquisitionDate"), request.getFromDate(), request.getToDate()));
+        }
+        return cb.and(predicates.toArray(new Predicate[0]));
+    };
+
+    Page<Goods> result = goodsRepository.findAll(spec, pageable);
+    return result.map(goodsMapper::toDto);
 }
 
 
 ---
 
-5. WarehouseServiceImpl.java
+6. InventoryService.java (New)
 
-package org.policy.service.impl;
+Page<InventoryDto> getFilteredInventory(FilterRequest request);
 
-import lombok.RequiredArgsConstructor;
-import org.policy.dto.WarehouseDto;
-import org.policy.entity.Warehouse;
-import org.policy.exception.ResourceNotFoundException;
-import org.policy.mapper.WarehouseMapper;
-import org.policy.repository.WarehouseRepository;
-import org.policy.service.WarehouseService;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
+---
+
+7. InventoryServiceImpl.java (New)
 
 @Service
 @RequiredArgsConstructor
-public class WarehouseServiceImpl implements WarehouseService {
+public class InventoryServiceImpl implements InventoryService {
 
-    private final WarehouseRepository warehouseRepository;
-    private final WarehouseMapper warehouseMapper;
-
-    @Override
-    public WarehouseDto create(WarehouseDto dto) {
-        if (warehouseRepository.existsByName(dto.getName())) {
-            throw new IllegalArgumentException("Warehouse already exists with name: " + dto.getName());
-        }
-        Warehouse warehouse = warehouseMapper.toEntity(dto);
-        return warehouseMapper.toDto(warehouseRepository.save(warehouse));
-    }
+    private final InventoryRepository inventoryRepository;
+    private final InventoryMapper inventoryMapper;
 
     @Override
-    public WarehouseDto update(Long id, WarehouseDto dto) {
-        Warehouse warehouse = warehouseRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found with id " + id));
-        warehouse.setName(dto.getName());
-        warehouse.setLocation(dto.getLocation());
-        return warehouseMapper.toDto(warehouseRepository.save(warehouse));
-    }
+    public Page<InventoryDto> getFilteredInventory(FilterRequest request) {
+        Pageable pageable = PageRequest.of(
+            request.getPage(),
+            request.getSize(),
+            Sort.by(Sort.Direction.fromString(request.getDirection()), request.getSortBy())
+        );
 
-    @Override
-    public void delete(Long id) {
-        warehouseRepository.deleteById(id);
-    }
+        Specification<Inventory> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (request.getWarehouseId() != null) {
+                predicates.add(cb.equal(root.get("warehouse").get("id"), request.getWarehouseId()));
+            }
+            if (request.getFromDate() != null && request.getToDate() != null) {
+                predicates.add(cb.between(root.get("dateAdded"), request.getFromDate(), request.getToDate()));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
 
-    @Override
-    public WarehouseDto getById(Long id) {
-        return warehouseMapper.toDto(warehouseRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found with id " + id)));
-    }
-
-    @Override
-    public List<WarehouseDto> getAll() {
-        return warehouseRepository.findAll().stream()
-                .map(warehouseMapper::toDto)
-                .collect(Collectors.toList());
+        Page<Inventory> result = inventoryRepository.findAll(spec, pageable);
+        return result.map(inventoryMapper::toDto);
     }
 }
 
 
 ---
 
-6. WarehouseController.java
+8. GoodsController.java (Updated)
 
-package org.policy.controller;
+@PostMapping("/filter")
+public ResponseEntity<Page<GoodsDto>> filterGoods(@RequestBody FilterRequest filterRequest) {
+    return ResponseEntity.ok(goodsService.getFilteredGoods(filterRequest));
+}
 
-import lombok.RequiredArgsConstructor;
-import org.policy.dto.WarehouseDto;
-import org.policy.service.WarehouseService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+---
+
+9. InventoryController.java (New)
 
 @RestController
-@RequestMapping("/api/warehouses")
+@RequestMapping("/api/inventory")
 @RequiredArgsConstructor
-public class WarehouseController {
+public class InventoryController {
 
-    private final WarehouseService warehouseService;
+    private final InventoryService inventoryService;
 
-    @PostMapping
-    public ResponseEntity<WarehouseDto> create(@RequestBody WarehouseDto dto) {
-        return ResponseEntity.ok(warehouseService.create(dto));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<WarehouseDto> update(@PathVariable Long id, @RequestBody WarehouseDto dto) {
-        return ResponseEntity.ok(warehouseService.update(id, dto));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        warehouseService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<WarehouseDto> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(warehouseService.getById(id));
-    }
-
-    @GetMapping
-    public ResponseEntity<List<WarehouseDto>> getAll() {
-        return ResponseEntity.ok(warehouseService.getAll());
+    @PostMapping("/filter")
+    public ResponseEntity<Page<InventoryDto>> filterInventory(@RequestBody FilterRequest request) {
+        return ResponseEntity.ok(inventoryService.getFilteredInventory(request));
     }
 }
 
 
 ---
 
-Let me know when you're ready to move to Day 10: Advanced Filtering and Pagination, or if you'd like unit tests, postman collection, or Swagger config next!
+Summary: Day 10 Done
+
+Added dynamic filtering, sorting, pagination to Goods and Inventory
+
+Used JpaSpecificationExecutor for flexibility
+
+Centralized filtering in FilterRequest
+
+All updates were appended to existing files with no breaking changes
+
+
+Would you like Postman test samples or proceed to Day 11 (if you’re planning more)?
+
