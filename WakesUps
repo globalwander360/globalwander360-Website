@@ -1,197 +1,150 @@
-Great! Let's move on to Day 10: Advanced Filtering and Pagination for the backend.
+Great! Since you’re starting Frontend Day 1, the focus is on setting up the Angular project and preparing it for development.
 
 
 ---
 
-Day 10 Backend Structure
+Day 1: Frontend Setup and Requirements Analysis
 
-Objective: Add filtering, sorting, and pagination to Goods and Inventory listing endpoints.
+1. Project Initialization
 
-New or Updated Files
+Command:
 
-src/main/java/org/policy/
-│
-├── controller/
-│   ├── GoodsController.java         // Updated
-│   └── InventoryController.java     // New
-│
-├── dto/
-│   └── FilterRequest.java           // New (for dynamic filters)
-│
-├── repository/
-│   ├── GoodsRepository.java         // Updated
-│   └── InventoryRepository.java     // New
-│
-├── service/
-│   ├── GoodsService.java            // Updated
-│   ├── InventoryService.java        // New
-│   └── impl/
-│       ├── GoodsServiceImpl.java    // Updated
-│       └── InventoryServiceImpl.java// New
+ng new inventory-management --style=scss --routing
+cd inventory-management
 
 
 ---
 
-1. FilterRequest.java
+2. Install Required Dependencies
 
-package org.policy.dto;
-
-import lombok.Data;
-import java.time.LocalDate;
-
-@Data
-public class FilterRequest {
-    private String status;
-    private Long categoryId;
-    private Long warehouseId;
-    private LocalDate fromDate;
-    private LocalDate toDate;
-    private String sortBy = "id";
-    private String direction = "asc";
-    private int page = 0;
-    private int size = 10;
-}
+npm install primeng primeicons
+npm install @angular/forms @ngrx/store @ngrx/effects @ngrx/store-devtools
+npm install --save @ngx-translate/core @ngx-translate/http-loader
 
 
 ---
 
-2. GoodsRepository.java (Updated)
+3. Project Folder Structure
 
-@Repository
-public interface GoodsRepository extends JpaRepository<Goods, Long>, JpaSpecificationExecutor<Goods> {
-}
-
-
----
-
-3. InventoryRepository.java (New)
-
-@Repository
-public interface InventoryRepository extends JpaRepository<Inventory, Long>, JpaSpecificationExecutor<Inventory> {
-}
-
-
----
-
-4. GoodsService.java (Updated)
-
-Page<GoodsDto> getFilteredGoods(FilterRequest filterRequest);
-
-
----
-
-5. GoodsServiceImpl.java (Updated)
-
-@Override
-public Page<GoodsDto> getFilteredGoods(FilterRequest request) {
-    Pageable pageable = PageRequest.of(
-        request.getPage(),
-        request.getSize(),
-        Sort.by(Sort.Direction.fromString(request.getDirection()), request.getSortBy())
-    );
-
-    Specification<Goods> spec = (root, query, cb) -> {
-        List<Predicate> predicates = new ArrayList<>();
-        if (request.getStatus() != null) {
-            predicates.add(cb.equal(root.get("status"), request.getStatus()));
-        }
-        if (request.getCategoryId() != null) {
-            predicates.add(cb.equal(root.get("category").get("id"), request.getCategoryId()));
-        }
-        if (request.getFromDate() != null && request.getToDate() != null) {
-            predicates.add(cb.between(root.get("acquisitionDate"), request.getFromDate(), request.getToDate()));
-        }
-        return cb.and(predicates.toArray(new Predicate[0]));
-    };
-
-    Page<Goods> result = goodsRepository.findAll(spec, pageable);
-    return result.map(goodsMapper::toDto);
-}
+src/
+├── app/
+│   ├── core/
+│   │   ├── services/
+│   │   ├── models/
+│   │   └── guards/
+│   ├── shared/
+│   │   ├── components/
+│   │   ├── directives/
+│   │   └── pipes/
+│   ├── auth/
+│   │   ├── login/
+│   │   ├── register/
+│   ├── dashboard/
+│   │   ├── user/
+│   │   ├── admin/
+│   │   └── coordinator/
+│   ├── store/
+│   │   ├── actions/
+│   │   ├── reducers/
+│   │   ├── effects/
+│   │   └── selectors/
+│   ├── app.component.html
+│   ├── app.component.ts
+│   └── app.module.ts
+├── assets/
+│   └── i18n/
+│       └── en.json
+├── environments/
+│   ├── environment.ts
+│   └── environment.prod.ts
 
 
 ---
 
-6. InventoryService.java (New)
+4. Basic Setup
 
-Page<InventoryDto> getFilteredInventory(FilterRequest request);
+app.module.ts
 
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { HttpClientModule } from '@angular/common/http';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
----
+// PrimeNG Modules
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
 
-7. InventoryServiceImpl.java (New)
+// NgRx
+import { StoreModule } from '@ngrx/store';
+import { EffectsModule } from '@ngrx/effects';
+import { StoreDevtoolsModule } from '@ngrx/store-devtools';
 
-@Service
-@RequiredArgsConstructor
-public class InventoryServiceImpl implements InventoryService {
-
-    private final InventoryRepository inventoryRepository;
-    private final InventoryMapper inventoryMapper;
-
-    @Override
-    public Page<InventoryDto> getFilteredInventory(FilterRequest request) {
-        Pageable pageable = PageRequest.of(
-            request.getPage(),
-            request.getSize(),
-            Sort.by(Sort.Direction.fromString(request.getDirection()), request.getSortBy())
-        );
-
-        Specification<Inventory> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (request.getWarehouseId() != null) {
-                predicates.add(cb.equal(root.get("warehouse").get("id"), request.getWarehouseId()));
-            }
-            if (request.getFromDate() != null && request.getToDate() != null) {
-                predicates.add(cb.between(root.get("dateAdded"), request.getFromDate(), request.getToDate()));
-            }
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-
-        Page<Inventory> result = inventoryRepository.findAll(spec, pageable);
-        return result.map(inventoryMapper::toDto);
-    }
-}
-
-
----
-
-8. GoodsController.java (Updated)
-
-@PostMapping("/filter")
-public ResponseEntity<Page<GoodsDto>> filterGoods(@RequestBody FilterRequest filterRequest) {
-    return ResponseEntity.ok(goodsService.getFilteredGoods(filterRequest));
-}
+@NgModule({
+  declarations: [AppComponent],
+  imports: [
+    BrowserModule,
+    BrowserAnimationsModule,
+    AppRoutingModule,
+    HttpClientModule,
+    FormsModule,
+    ReactiveFormsModule,
+    ButtonModule,
+    InputTextModule,
+    StoreModule.forRoot({}),
+    EffectsModule.forRoot([]),
+    StoreDevtoolsModule.instrument({ maxAge: 25 }),
+  ],
+  providers: [],
+  bootstrap: [AppComponent],
+})
+export class AppModule {}
 
 
 ---
 
-9. InventoryController.java (New)
+5. Routing Configuration
 
-@RestController
-@RequestMapping("/api/inventory")
-@RequiredArgsConstructor
-public class InventoryController {
+app-routing.module.ts
 
-    private final InventoryService inventoryService;
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
 
-    @PostMapping("/filter")
-    public ResponseEntity<Page<InventoryDto>> filterInventory(@RequestBody FilterRequest request) {
-        return ResponseEntity.ok(inventoryService.getFilteredInventory(request));
-    }
-}
+const routes: Routes = [
+  { path: '', redirectTo: 'auth/login', pathMatch: 'full' },
+  {
+    path: 'auth',
+    loadChildren: () =>
+      import('./auth/auth.module').then((m) => m.AuthModule),
+  },
+  {
+    path: 'dashboard',
+    loadChildren: () =>
+      import('./dashboard/dashboard.module').then((m) => m.DashboardModule),
+  },
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule],
+})
+export class AppRoutingModule {}
 
 
 ---
 
-Summary: Day 10 Done
+6. Environment Configuration
 
-Added dynamic filtering, sorting, pagination to Goods and Inventory
+environment.ts
 
-Used JpaSpecificationExecutor for flexibility
+export const environment = {
+  production: false,
+  apiUrl: 'http://localhost:8080/api',
+};
 
-Centralized filtering in FilterRequest
 
-All updates were appended to existing files with no breaking changes
+---
 
-
-Would you like Postman test samples or proceed to Day 11 (if you’re planning more)?
-
+Would you like me to generate code for auth/login and register components next (for Day 2 frontend)?
