@@ -1,379 +1,227 @@
-Great! Here's the complete backend structure and full source code for Day 8: Generate Excel Reports (Admin) of your Inventory Management Module project.
+Great! Here's the complete backend structure and source code for Day 9: Warehouse Management, along with updates to previously created files where necessary.
 
 
 ---
 
-Objective:
+Day 9 – Backend Folder Structure
 
-Allow Admin to download Excel reports:
-
-Sheet 1: Inventory Summary
-
-Sheet 2: Rejected Goods with Comments
-
+src/main/java/org/policy/
+│
+├── controller/
+│   └── WarehouseController.java
+│
+├── dto/
+│   └── WarehouseDto.java
+│
+├── entity/
+│   └── Warehouse.java       (Already created)
+│
+├── mapper/
+│   └── WarehouseMapper.java
+│
+├── repository/
+│   └── WarehouseRepository.java
+│
+├── service/
+│   ├── WarehouseService.java
+│   └── impl/
+│       └── WarehouseServiceImpl.java
 
 
 ---
 
-1. Add Maven Dependency for Excel (Apache POI)
+1. WarehouseDto.java
 
-pom.xml
+package org.policy.dto;
 
-<dependency>
-    <groupId>org.apache.poi</groupId>
-    <artifactId>poi-ooxml</artifactId>
-    <version>5.2.3</version>
-</dependency>
+import lombok.*;
 
-
----
-
-2. Create ReportService
-
-ReportService.java
-
-package org.policy.service;
-
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.policy.entity.Goods;
-import org.policy.entity.Inventory;
-import org.policy.repository.GoodsRepository;
-import org.policy.repository.InventoryRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.List;
-
-@Service
-public class ReportService {
-
-    @Autowired
-    private InventoryRepository inventoryRepository;
-
-    @Autowired
-    private GoodsRepository goodsRepository;
-
-    public ByteArrayInputStream generateExcelReport() throws IOException {
-        try (Workbook workbook = new XSSFWorkbook()) {
-
-            // Sheet 1: Inventory Summary
-            Sheet inventorySheet = workbook.createSheet("Inventory Summary");
-            Row header = inventorySheet.createRow(0);
-            header.createCell(0).setCellValue("Goods Name");
-            header.createCell(1).setCellValue("Quantity");
-            header.createCell(2).setCellValue("Warehouse");
-            header.createCell(3).setCellValue("Date Added");
-
-            List<Inventory> inventories = inventoryRepository.findAll();
-            int rowIdx = 1;
-            for (Inventory inv : inventories) {
-                Row row = inventorySheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(inv.getGoods().getName());
-                row.createCell(1).setCellValue(inv.getQuantity());
-                row.createCell(2).setCellValue(inv.getWarehouse() != null ? inv.getWarehouse().getName() : "N/A");
-                row.createCell(3).setCellValue(inv.getDateAdded().toString());
-            }
-
-            // Sheet 2: Rejected Goods
-            Sheet rejectedSheet = workbook.createSheet("Rejected Goods");
-            Row header2 = rejectedSheet.createRow(0);
-            header2.createCell(0).setCellValue("Goods Name");
-            header2.createCell(1).setCellValue("Supplier");
-            header2.createCell(2).setCellValue("Rejection Comment");
-
-            List<Goods> rejectedGoods = goodsRepository.findByStatus("REJECTED");
-            int rowIdx2 = 1;
-            for (Goods goods : rejectedGoods) {
-                Row row = rejectedSheet.createRow(rowIdx2++);
-                row.createCell(0).setCellValue(goods.getName());
-                row.createCell(1).setCellValue(goods.getSupplier());
-                row.createCell(2).setCellValue(goods.getGoodsReview() != null ? goods.getGoodsReview().getComment() : "No comment");
-            }
-
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            workbook.write(out);
-            return new ByteArrayInputStream(out.toByteArray());
-        }
-    }
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class WarehouseDto {
+    private Long id;
+    private String name;
+    private String location;
 }
 
 
 ---
 
-3. Create ReportController
-
-ReportController.java
-
-package org.policy.controller;
-
-import org.policy.service.ReportService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-
-@RestController
-@RequestMapping("/api/report")
-public class ReportController {
-
-    @Autowired
-    private ReportService reportService;
-
-    @GetMapping("/excel")
-    public ResponseEntity<InputStreamResource> downloadExcelReport() throws IOException {
-        ByteArrayInputStream in = reportService.generateExcelReport();
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Content-Disposition", "attachment; filename=report.xlsx");
-
-        return ResponseEntity
-                .ok()
-                .headers(headers)
-                .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
-                .body(new InputStreamResource(in));
-    }
-}
-
-
----
-
-4. Add Custom Query to GoodsRepository
-
-GoodsRepository.java
+2. WarehouseRepository.java
 
 package org.policy.repository;
 
-import org.policy.entity.Goods;
+import org.policy.entity.Warehouse;
 import org.springframework.data.jpa.repository.JpaRepository;
-import java.util.List;
 
-public interface GoodsRepository extends JpaRepository<Goods, Long> {
-    List<Goods> findByStatus(String status);
+public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
+    boolean existsByName(String name);
 }
 
 
 ---
 
-5. Endpoint to Test
+3. WarehouseMapper.java
 
-GET /api/report/excel
+package org.policy.mapper;
 
-This will download the Excel file with two sheets: Inventory Summary and Rejected Goods.
+import org.policy.dto.WarehouseDto;
+import org.policy.entity.Warehouse;
+import org.springframework.stereotype.Component;
 
+@Component
+public class WarehouseMapper {
 
----
+    public Warehouse toEntity(WarehouseDto dto) {
+        return Warehouse.builder()
+                .id(dto.getId())
+                .name(dto.getName())
+                .location(dto.getLocation())
+                .build();
+    }
 
-Would you like me to generate a test case for this or move to Day 9 backend setup next?
-
-Here’s the backend folder and file structure for Day 8 of your Inventory Management Module project, focused on Excel Report Generation.
-
-
----
-
-Day 8 – Backend Folder Structure
-
-src
-└── main
-    ├── java
-    │   └── org
-    │       └── policy
-    │           ├── controller
-    │           │   └── ReportController.java
-    │           ├── entity
-    │           │   ├── Goods.java
-    │           │   ├── GoodsReview.java
-    │           │   ├── Inventory.java
-    │           │   └── Warehouse.java
-    │           ├── repository
-    │           │   ├── GoodsRepository.java  ← (Updated)
-    │           │   ├── InventoryRepository.java
-    │           │   └── WarehouseRepository.java
-    │           └── service
-    │               └── ReportService.java
-    └── resources
-        ├── application.properties
-        └── db
-            └── changelog
-                └── db.changelog-master.xml
-
-
----
-
-New Files in Day 8:
-
-controller/ReportController.java
-
-service/ReportService.java
-
-
-
----
-
-Updated Files in Day 8:
-
-repository/GoodsRepository.java → Added findByStatus(String status) method
-
-
-
----
-
-Let me know if you want to move to Day 9 or need unit tests, authentication role checks for report access, or Angular integration for the Excel download!
-
-
-Here’s the complete backend source code for Day 8 (Excel Report Generation) of your Inventory Management Module project. It includes:
-
-New files:
-
-ReportService.java
-
-ReportController.java
-
-
-Updated file:
-
-GoodsRepository.java (added a method for filtering by status)
-
-
-
-
----
-
-1. ReportService.java
-
-package org.policy.service;
-
-import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.policy.entity.Goods;
-import org.policy.entity.GoodsReview;
-import org.policy.entity.Inventory;
-import org.policy.repository.GoodsRepository;
-import org.policy.repository.InventoryRepository;
-import org.springframework.stereotype.Service;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.List;
-
-@Service
-@RequiredArgsConstructor
-public class ReportService {
-
-    private final GoodsRepository goodsRepository;
-    private final InventoryRepository inventoryRepository;
-
-    public ByteArrayInputStream generateExcelReport() throws IOException {
-        try (Workbook workbook = new XSSFWorkbook()) {
-
-            // Sheet 1: Inventory Summary
-            Sheet inventorySheet = workbook.createSheet("Inventory Summary");
-            Row header = inventorySheet.createRow(0);
-            header.createCell(0).setCellValue("Goods Name");
-            header.createCell(1).setCellValue("Quantity");
-            header.createCell(2).setCellValue("Warehouse Location");
-
-            List<Inventory> inventories = inventoryRepository.findAll();
-            int rowIdx = 1;
-            for (Inventory item : inventories) {
-                Row row = inventorySheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(item.getGoods().getName());
-                row.createCell(1).setCellValue(item.getQuantity());
-                row.createCell(2).setCellValue(item.getWarehouseLocation());
-            }
-
-            // Sheet 2: Rejected Goods
-            Sheet rejectedSheet = workbook.createSheet("Rejected Goods");
-            Row rejectHeader = rejectedSheet.createRow(0);
-            rejectHeader.createCell(0).setCellValue("Goods Name");
-            rejectHeader.createCell(1).setCellValue("Comment");
-
-            List<Goods> rejectedGoods = goodsRepository.findByStatus("REJECTED");
-            int rejectIdx = 1;
-            for (Goods goods : rejectedGoods) {
-                GoodsReview review = goods.getGoodsReview();
-                Row row = rejectedSheet.createRow(rejectIdx++);
-                row.createCell(0).setCellValue(goods.getName());
-                row.createCell(1).setCellValue(review != null ? review.getComment() : "N/A");
-            }
-
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            workbook.write(out);
-            return new ByteArrayInputStream(out.toByteArray());
-        }
+    public WarehouseDto toDto(Warehouse entity) {
+        return WarehouseDto.builder()
+                .id(entity.getId())
+                .name(entity.getName())
+                .location(entity.getLocation())
+                .build();
     }
 }
 
 
 ---
 
-2. ReportController.java
+4. WarehouseService.java
+
+package org.policy.service;
+
+import org.policy.dto.WarehouseDto;
+import java.util.List;
+
+public interface WarehouseService {
+    WarehouseDto create(WarehouseDto dto);
+    WarehouseDto update(Long id, WarehouseDto dto);
+    void delete(Long id);
+    WarehouseDto getById(Long id);
+    List<WarehouseDto> getAll();
+}
+
+
+---
+
+5. WarehouseServiceImpl.java
+
+package org.policy.service.impl;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.WarehouseDto;
+import org.policy.entity.Warehouse;
+import org.policy.exception.ResourceNotFoundException;
+import org.policy.mapper.WarehouseMapper;
+import org.policy.repository.WarehouseRepository;
+import org.policy.service.WarehouseService;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class WarehouseServiceImpl implements WarehouseService {
+
+    private final WarehouseRepository warehouseRepository;
+    private final WarehouseMapper warehouseMapper;
+
+    @Override
+    public WarehouseDto create(WarehouseDto dto) {
+        if (warehouseRepository.existsByName(dto.getName())) {
+            throw new IllegalArgumentException("Warehouse already exists with name: " + dto.getName());
+        }
+        Warehouse warehouse = warehouseMapper.toEntity(dto);
+        return warehouseMapper.toDto(warehouseRepository.save(warehouse));
+    }
+
+    @Override
+    public WarehouseDto update(Long id, WarehouseDto dto) {
+        Warehouse warehouse = warehouseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found with id " + id));
+        warehouse.setName(dto.getName());
+        warehouse.setLocation(dto.getLocation());
+        return warehouseMapper.toDto(warehouseRepository.save(warehouse));
+    }
+
+    @Override
+    public void delete(Long id) {
+        warehouseRepository.deleteById(id);
+    }
+
+    @Override
+    public WarehouseDto getById(Long id) {
+        return warehouseMapper.toDto(warehouseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found with id " + id)));
+    }
+
+    @Override
+    public List<WarehouseDto> getAll() {
+        return warehouseRepository.findAll().stream()
+                .map(warehouseMapper::toDto)
+                .collect(Collectors.toList());
+    }
+}
+
+
+---
+
+6. WarehouseController.java
 
 package org.policy.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.policy.service.ReportService;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.policy.dto.WarehouseDto;
+import org.policy.service.WarehouseService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/reports")
+@RequestMapping("/api/warehouses")
 @RequiredArgsConstructor
-public class ReportController {
+public class WarehouseController {
 
-    private final ReportService reportService;
+    private final WarehouseService warehouseService;
 
-    @GetMapping("/excel")
-    public ResponseEntity<InputStreamResource> downloadExcel() throws IOException {
-        ByteArrayInputStream in = reportService.generateExcelReport();
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Content-Disposition", "attachment; filename=report.xlsx");
+    @PostMapping
+    public ResponseEntity<WarehouseDto> create(@RequestBody WarehouseDto dto) {
+        return ResponseEntity.ok(warehouseService.create(dto));
+    }
 
-        return ResponseEntity.ok()
-                .headers(headers)
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(new InputStreamResource(in));
+    @PutMapping("/{id}")
+    public ResponseEntity<WarehouseDto> update(@PathVariable Long id, @RequestBody WarehouseDto dto) {
+        return ResponseEntity.ok(warehouseService.update(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        warehouseService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<WarehouseDto> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(warehouseService.getById(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<WarehouseDto>> getAll() {
+        return ResponseEntity.ok(warehouseService.getAll());
     }
 }
 
 
 ---
 
-3. Updated: GoodsRepository.java
-
-Add this method:
-
-import java.util.List;
-
-public interface GoodsRepository extends JpaRepository<Goods, Long> {
-    List<Goods> findByStatus(String status); // Added for report filtering
-}
-
-
----
-
-Let me know if you want:
-
-Unit tests
-
-Angular integration for the download button
-
-Proceed to Day 9: Warehouse Management backend setup
-
-
-
+Let me know when you're ready to move to Day 10: Advanced Filtering and Pagination, or if you'd like unit tests, postman collection, or Swagger config next!
