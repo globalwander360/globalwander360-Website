@@ -1,129 +1,248 @@
-Great! Since you’re starting Frontend Day 1, the focus is on setting up the Angular project and preparing it for development.
+Great! Here's the complete frontend structure and code for Day 2 of your Inventory Management Module project.
 
 
 ---
 
-Day 1: Frontend Setup and Requirements Analysis
+Day 2: Authentication and Role-based Navigation
 
-1. Project Initialization
+Project Structure (src/app)
 
-Command:
-
-ng new inventory-management --style=scss --routing
-cd inventory-management
-
-
----
-
-2. Install Required Dependencies
-
-npm install primeng primeicons
-npm install @angular/forms @ngrx/store @ngrx/effects @ngrx/store-devtools
-npm install --save @ngx-translate/core @ngx-translate/http-loader
-
-
----
-
-3. Project Folder Structure
-
-src/
-├── app/
-│   ├── core/
-│   │   ├── services/
-│   │   ├── models/
-│   │   └── guards/
-│   ├── shared/
-│   │   ├── components/
-│   │   ├── directives/
-│   │   └── pipes/
-│   ├── auth/
-│   │   ├── login/
-│   │   ├── register/
-│   ├── dashboard/
-│   │   ├── user/
-│   │   ├── admin/
-│   │   └── coordinator/
-│   ├── store/
-│   │   ├── actions/
-│   │   ├── reducers/
-│   │   ├── effects/
-│   │   └── selectors/
-│   ├── app.component.html
-│   ├── app.component.ts
-│   └── app.module.ts
-├── assets/
-│   └── i18n/
-│       └── en.json
-├── environments/
-│   ├── environment.ts
-│   └── environment.prod.ts
+app/
+│
+├── auth/
+│   ├── auth.module.ts
+│   ├── login/
+│   │   ├── login.component.ts
+│   │   ├── login.component.html
+│   │   ├── login.component.scss
+│   └── register/
+│       ├── register.component.ts
+│       ├── register.component.html
+│       ├── register.component.scss
+│
+├── core/
+│   ├── services/
+│   │   ├── auth.service.ts
+│   ├── guards/
+│   │   ├── role.guard.ts
+│   ├── models/
+│   │   ├── user.model.ts
+│
+├── dashboard/
+│   ├── admin-dashboard/
+│   ├── user-dashboard/
+│   ├── logistics-dashboard/
+│
+├── shared/
+│   ├── navbar/
+│   │   ├── navbar.component.ts
+│   │   ├── navbar.component.html
+│
+├── app-routing.module.ts
+├── app.component.ts
+├── app.module.ts
 
 
 ---
 
-4. Basic Setup
+1. user.model.ts
 
-app.module.ts
+export interface User {
+  id: number;
+  email: string;
+  role: 'ADMIN' | 'USER' | 'LOGISTICS_CO_ORDINATOR';
+  token: string;
+}
 
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
-import { AppRoutingModule } from './app-routing.module';
-import { AppComponent } from './app.component';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { HttpClientModule } from '@angular/common/http';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
-// PrimeNG Modules
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
+---
 
-// NgRx
-import { StoreModule } from '@ngrx/store';
-import { EffectsModule } from '@ngrx/effects';
-import { StoreDevtoolsModule } from '@ngrx/store-devtools';
+2. auth.service.ts
 
-@NgModule({
-  declarations: [AppComponent],
-  imports: [
-    BrowserModule,
-    BrowserAnimationsModule,
-    AppRoutingModule,
-    HttpClientModule,
-    FormsModule,
-    ReactiveFormsModule,
-    ButtonModule,
-    InputTextModule,
-    StoreModule.forRoot({}),
-    EffectsModule.forRoot([]),
-    StoreDevtoolsModule.instrument({ maxAge: 25 }),
-  ],
-  providers: [],
-  bootstrap: [AppComponent],
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+import { User } from '../models/user.model';
+
+@Injectable({ providedIn: 'root' })
+export class AuthService {
+  private userSubject = new BehaviorSubject<User | null>(null);
+  user$ = this.userSubject.asObservable();
+
+  constructor(private http: HttpClient) {}
+
+  login(credentials: { email: string; password: string }): Observable<User> {
+    return this.http.post<User>('/api/auth/login', credentials).pipe(
+      tap(user => this.userSubject.next(user))
+    );
+  }
+
+  register(userData: any): Observable<any> {
+    return this.http.post('/api/auth/register', userData);
+  }
+
+  logout(): void {
+    this.userSubject.next(null);
+  }
+
+  get currentUser(): User | null {
+    return this.userSubject.value;
+  }
+}
+
+
+---
+
+3. role.guard.ts
+
+import { Injectable } from '@angular/core';
+import { CanActivate, ActivatedRouteSnapshot, Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+
+@Injectable({ providedIn: 'root' })
+export class RoleGuard implements CanActivate {
+  constructor(private auth: AuthService, private router: Router) {}
+
+  canActivate(route: ActivatedRouteSnapshot): boolean {
+    const expectedRole = route.data['role'];
+    const currentUser = this.auth.currentUser;
+
+    if (currentUser && currentUser.role === expectedRole) {
+      return true;
+    }
+
+    this.router.navigate(['/login']);
+    return false;
+  }
+}
+
+
+---
+
+4. login.component.ts
+
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { FormBuilder, Validators } from '@angular/forms';
+import { AuthService } from 'src/app/core/services/auth.service';
+
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
 })
-export class AppModule {}
+export class LoginComponent {
+  form = this.fb.group({
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', Validators.required],
+  });
+
+  constructor(private fb: FormBuilder, private auth: AuthService, private router: Router) {}
+
+  onSubmit() {
+    if (this.form.valid) {
+      this.auth.login(this.form.value).subscribe(user => {
+        switch (user.role) {
+          case 'ADMIN':
+            this.router.navigate(['/admin']);
+            break;
+          case 'USER':
+            this.router.navigate(['/user']);
+            break;
+          case 'LOGISTICS_CO_ORDINATOR':
+            this.router.navigate(['/logistics']);
+            break;
+        }
+      });
+    }
+  }
+}
 
 
 ---
 
-5. Routing Configuration
+5. register.component.ts
 
-app-routing.module.ts
+import { Component } from '@angular/core';
+import { FormBuilder, Validators } from '@angular/forms';
+import { AuthService } from 'src/app/core/services/auth.service';
+import { Router } from '@angular/router';
+
+@Component({
+  selector: 'app-register',
+  templateUrl: './register.component.html',
+})
+export class RegisterComponent {
+  form = this.fb.group({
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', Validators.required],
+    role: ['', Validators.required],
+  });
+
+  constructor(private fb: FormBuilder, private auth: AuthService, private router: Router) {}
+
+  onSubmit() {
+    if (this.form.valid) {
+      this.auth.register(this.form.value).subscribe(() => {
+        this.router.navigate(['/login']);
+      });
+    }
+  }
+}
+
+
+---
+
+6. navbar.component.ts
+
+import { Component } from '@angular/core';
+import { AuthService } from 'src/app/core/services/auth.service';
+
+@Component({
+  selector: 'app-navbar',
+  templateUrl: './navbar.component.html',
+})
+export class NavbarComponent {
+  constructor(public auth: AuthService) {}
+
+  logout() {
+    this.auth.logout();
+  }
+}
+
+
+---
+
+7. app-routing.module.ts (Updated)
 
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
+import { LoginComponent } from './auth/login/login.component';
+import { RegisterComponent } from './auth/register/register.component';
+import { RoleGuard } from './core/guards/role.guard';
 
 const routes: Routes = [
-  { path: '', redirectTo: 'auth/login', pathMatch: 'full' },
+  { path: '', redirectTo: 'login', pathMatch: 'full' },
+  { path: 'login', component: LoginComponent },
+  { path: 'register', component: RegisterComponent },
   {
-    path: 'auth',
-    loadChildren: () =>
-      import('./auth/auth.module').then((m) => m.AuthModule),
+    path: 'admin',
+    loadChildren: () => import('./dashboard/admin-dashboard/admin-dashboard.module').then(m => m.AdminDashboardModule),
+    canActivate: [RoleGuard],
+    data: { role: 'ADMIN' }
   },
   {
-    path: 'dashboard',
-    loadChildren: () =>
-      import('./dashboard/dashboard.module').then((m) => m.DashboardModule),
+    path: 'user',
+    loadChildren: () => import('./dashboard/user-dashboard/user-dashboard.module').then(m => m.UserDashboardModule),
+    canActivate: [RoleGuard],
+    data: { role: 'USER' }
   },
+  {
+    path: 'logistics',
+    loadChildren: () => import('./dashboard/logistics-dashboard/logistics-dashboard.module').then(m => m.LogisticsDashboardModule),
+    canActivate: [RoleGuard],
+    data: { role: 'LOGISTICS_CO_ORDINATOR' }
+  }
 ];
 
 @NgModule({
@@ -135,16 +254,4 @@ export class AppRoutingModule {}
 
 ---
 
-6. Environment Configuration
-
-environment.ts
-
-export const environment = {
-  production: false,
-  apiUrl: 'http://localhost:8080/api',
-};
-
-
----
-
-Would you like me to generate code for auth/login and register components next (for Day 2 frontend)?
+Let me know if you want Day 3 frontend next or if you’d like me to show any specific Day 2 files in more detail!
