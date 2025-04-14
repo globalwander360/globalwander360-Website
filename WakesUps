@@ -1,161 +1,153 @@
-If your authentication form (login or register) isn't appearing on your web screen, here are some common issues to check:
+Great to hear that your code is running smoothly! To enhance your login page with an attractive and modern design using SCSS, here's a stylish example you can integrate into your Angular project:
 
 
 ---
 
-✅ 1. Ensure <router-outlet> is Present in app.component.html
+✨ Stylish SCSS Login Page Design
 
-Angular uses the <router-outlet> directive to display routed components. Without it, routed components like your login or register forms won't render.
-
-Check your app.component.html:
-
-<!-- app.component.html -->
-<router-outlet></router-outlet>
-
-Ensure that:
-
-<router-outlet> is present.
-
-It's not nested inside other components unintentionally.
-
-It's not duplicated in other component templates like login.component.html.
+🖼️ Preview
 
 
-Having <router-outlet> only in app.component.html is standard practice. Including it elsewhere can cause unexpected behavior.
+
+Inspired by the Responsive Beautiful Login Page Template.
 
 
 ---
 
-✅ 2. Verify Routing Configuration in app-routing.module.ts
+🧩 HTML Structure (login.component.html)
 
-Ensure your routes are correctly defined and that the default path redirects to the login component.
+<div class="login-container">
+  <form class="login-form">
+    <h2>Welcome Back</h2>
+    <div class="input-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required />
+    </div>
+    <div class="input-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required />
+    </div>
+    <button type="submit">Login</button>
+    <p class="signup-link">Don't have an account? <a href="#">Sign Up</a></p>
+  </form>
+</div>
 
-Example:
 
-// app-routing.module.ts
-import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
-import { LoginComponent } from './auth/login/login.component';
-import { RegisterComponent } from './auth/register/register.component';
-import { GoodsRegistrationComponent } from './user/goods-registration/goods-registration.component';
-import { AuthGuard } from './auth/auth.guard';
+---
 
-const routes: Routes = [
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
-  {
-    path: 'user-dashboard',
-    component: GoodsRegistrationComponent,
-    canActivate: [AuthGuard],
-    data: { role: 'User' },
-  },
-  { path: '', redirectTo: '/login', pathMatch: 'full' }, // Default route
-];
+🎨 SCSS Styling (login.component.scss)
 
-@NgModule({
-  imports: [RouterModule.forRoot(routes)],
-  exports: [RouterModule],
-})
-export class AppRoutingModule {}
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #74ebd5, #acb6e5);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 
-Ensure:
+  .login-form {
+    background: #ffffff;
+    padding: 2rem 3rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 400px;
 
-The path for login is correctly set.
+    h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      color: #333;
+    }
 
-The default route redirects to /login.
+    .input-group {
+      margin-bottom: 1rem;
+
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #555;
+      }
+
+      input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        transition: border-color 0.3s;
+
+        &:focus {
+          border-color: #74ebd5;
+          outline: none;
+        }
+      }
+    }
+
+    button {
+      width: 100%;
+      padding: 0.75rem;
+      background-color: #74ebd5;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s;
+
+      &:hover {
+        background-color: #67d8c2;
+      }
+    }
+
+    .signup-link {
+      text-align: center;
+      margin-top: 1rem;
+      color: #555;
+
+      a {
+        color: #74ebd5;
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+}
+
+
+---
+
+⚙️ Integration Steps
+
+1. Update HTML: Replace the content of your login.component.html with the provided HTML structure.
+
+
+2. Apply SCSS: Copy the SCSS code into your login.component.scss file.
+
+
+3. Ensure SCSS Compilation: Make sure your Angular project is set up to compile SCSS. If you initially created your project with SCSS support, this should already be configured.
+
+
+4. Responsive Design: The provided styles are responsive. However, you can further enhance responsiveness by adding media queries as needed.
+
 
 
 
 ---
 
-✅ 3. Confirm Component Declarations in app.module.ts
+🔗 Additional Resources
 
-All components used in routing must be declared in your module.
+For more inspiration and ready-to-use login form templates, consider exploring the following resources:
 
-Example:
+35+ CSS Login Forms - FreeFrontend
 
-// app.module.ts
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
-import { FormsModule } from '@angular/forms'; // Required for ngModel
-import { HttpClientModule } from '@angular/common/http';
-import { AppRoutingModule } from './app-routing.module';
+42 Best Free HTML5 And CSS3 Login Forms 2025 - Colorlib
 
-import { AppComponent } from './app.component';
-import { LoginComponent } from './auth/login/login.component';
-import { RegisterComponent } from './auth/register/register.component';
-import { GoodsRegistrationComponent } from './user/goods-registration/goods-registration.component';
-
-@NgModule({
-  declarations: [
-    AppComponent,
-    LoginComponent,
-    RegisterComponent,
-    GoodsRegistrationComponent,
-  ],
-  imports: [
-    BrowserModule,
-    AppRoutingModule,
-    FormsModule, // Ensure this is imported
-    HttpClientModule,
-  ],
-  providers: [],
-  bootstrap: [AppComponent],
-})
-export class AppModule {}
-
-Ensure:
-
-FormsModule is imported (necessary for ngModel).
-
-All components are declared.
+30+ Free Login & Registration Form Templates - CodingNepal
 
 
 
 ---
 
-✅ 4. Avoid Using Component Selectors Directly in Templates
-
-Do not manually insert component selectors like <app-login></app-login> into templates. Instead, rely on routing to render components.
-
-Incorrect:
-
-<!-- Avoid this in app.component.html -->
-<app-login></app-login>
-
-Correct:
-
-<!-- app.component.html -->
-<router-outlet></router-outlet>
-
-This ensures that the Angular router controls which component is displayed based on the URL.
-
-
----
-
-✅ 5. Check for Errors in the Browser Console
-
-Open your browser's developer tools and look for any errors in the console. Common issues include:
-
-Missing module imports.
-
-Incorrect component declarations.
-
-Routing errors.
-
-
-Address any errors found to ensure components render correctly.
-
-
----
-
-If you've checked all the above and the issue persists, please provide:
-
-The content of your app.component.html.
-
-Your routing configuration (app-routing.module.ts).
-
-Any error messages from the browser console.
-
-
-With this information, I can offer more specific assistance.
+Feel free to customize the colors, fonts, and layout to better match your application's branding. If you need assistance with further customization or integrating additional features like "Remember Me" checkboxes or social login buttons, don't hesitate to ask!
