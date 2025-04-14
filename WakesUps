@@ -1,9 +1,22 @@
-Great! Here's the updated frontend folder structure along with the complete source code for everything covered in Days 1–3:
+Perfect! You’ll get the entire Angular frontend source code for Days 1 to 3 right here, broken down clearly by file and folder. This includes:
+
+Login/Register Functionality
+
+Role-based Routing
+
+User Dashboard: Goods Registration UI
+
+Shared Models & Services
+
+App Module and Routing
+
 
 
 ---
 
-Updated Folder Structure (Days 1–3)
+Let’s start with the folder structure, and then I’ll give you the source code file-by-file:
+
+Folder Structure (Days 1–3)
 
 src/
 └── app/
@@ -19,19 +32,19 @@ src/
     │   ├── auth.service.ts
     │   └── auth.guard.ts
     ├── user/
-    │   ├── goods-registration/
-    │   │   ├── goods-registration.component.ts
-    │   │   ├── goods-registration.component.html
-    │   │   └── goods-registration.component.scss
+    │   └── goods-registration/
+    │       ├── goods-registration.component.ts
+    │       ├── goods-registration.component.html
+    │       └── goods-registration.component.scss
     ├── shared/
     │   ├── models/
     │   │   ├── user.model.ts
     │   │   ├── goods.model.ts
     │   │   └── category.model.ts
-    │   ├── services/
-    │   │   ├── token.service.ts
-    │   │   ├── goods.service.ts
-    │   │   └── category.service.ts
+    │   └── services/
+    │       ├── token.service.ts
+    │       ├── goods.service.ts
+    │       └── category.service.ts
     ├── app-routing.module.ts
     ├── app.component.ts
     ├── app.component.html
@@ -40,19 +53,12 @@ src/
 
 ---
 
-Next Step
-
-Would you like me to send the full code of each file one by one starting from login.component.ts, or should I provide a zip-ready structure dump?
-
-Let me know your preference and we’ll roll it out!
-
-
-Great! Here's the complete source code for the frontend structure you've mentioned, starting from Day 1–3:
+I’ll now begin posting the source code file-by-file. We’ll go in batches (auth, user, shared, root files). Let’s begin with auth/ folder:
 
 
 ---
 
-1. login.component.ts
+auth/login/login.component.ts
 
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
@@ -73,7 +79,15 @@ export class LoginComponent {
   login(): void {
     this.authService.login(this.email, this.password).subscribe(
       (response) => {
-        this.router.navigate(['/user-dashboard']);
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('role', response.role);
+        if (response.role === 'User') {
+          this.router.navigate(['/user-dashboard']);
+        } else if (response.role === 'Admin') {
+          this.router.navigate(['/admin-dashboard']);
+        } else if (response.role === 'Logistics Coordinator') {
+          this.router.navigate(['/logistics-dashboard']);
+        }
       },
       (error) => {
         this.errorMessage = 'Invalid credentials, please try again!';
@@ -86,7 +100,10 @@ export class LoginComponent {
   }
 }
 
-2. login.component.html
+
+---
+
+auth/login/login.component.html
 
 <div class="login-container">
   <h2>Login</h2>
@@ -99,7 +116,10 @@ export class LoginComponent {
   <button (click)="goToRegister()">Don't have an account? Register</button>
 </div>
 
-3. login.component.scss
+
+---
+
+auth/login/login.component.scss
 
 .login-container {
   display: flex;
@@ -107,19 +127,16 @@ export class LoginComponent {
   align-items: center;
   padding: 20px;
 }
-
 input {
   margin: 10px 0;
   padding: 10px;
   width: 100%;
 }
-
 button {
   margin: 10px 0;
   padding: 10px;
   width: 100%;
 }
-
 .error-message {
   color: red;
 }
@@ -127,7 +144,23 @@ button {
 
 ---
 
-4. register.component.ts
+Next up:
+
+register.component.ts/html/scss
+
+auth.service.ts
+
+auth.guard.ts
+
+
+Let me continue with those in the next message. Ready?
+
+Awesome! Let’s continue with the remaining files inside the auth/ folder.
+
+
+---
+
+auth/register/register.component.ts
 
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
@@ -139,46 +172,51 @@ import { AuthService } from '../auth.service';
   styleUrls: ['./register.component.scss']
 })
 export class RegisterComponent {
-  name: string = '';
+  username: string = '';
   email: string = '';
   password: string = '';
   role: string = 'User';
-  errorMessage: string = '';
 
   constructor(private authService: AuthService, private router: Router) {}
 
   register(): void {
-    const user = { name: this.name, email: this.email, password: this.password, role: this.role };
-    this.authService.register(user).subscribe(
-      (response) => {
-        this.router.navigate(['/login']);
-      },
-      (error) => {
-        this.errorMessage = 'Registration failed, please try again!';
-      }
-    );
+    this.authService.register({
+      username: this.username,
+      email: this.email,
+      password: this.password,
+      role: this.role
+    }).subscribe(() => {
+      this.router.navigate(['/login']);
+    });
   }
 }
 
-5. register.component.html
+
+---
+
+auth/register/register.component.html
 
 <div class="register-container">
   <h2>Register</h2>
   <form (ngSubmit)="register()">
-    <input [(ngModel)]="name" name="name" placeholder="Full Name" required />
+    <input [(ngModel)]="username" name="username" type="text" placeholder="Username" required />
     <input [(ngModel)]="email" name="email" type="email" placeholder="Email" required />
     <input [(ngModel)]="password" name="password" type="password" placeholder="Password" required />
+
     <select [(ngModel)]="role" name="role" required>
       <option value="User">User</option>
       <option value="Admin">Admin</option>
       <option value="Logistics Coordinator">Logistics Coordinator</option>
     </select>
+
     <button type="submit">Register</button>
-    <div class="error-message" *ngIf="errorMessage">{{ errorMessage }}</div>
   </form>
 </div>
 
-6. register.component.scss
+
+---
+
+auth/register/register.component.scss
 
 .register-container {
   display: flex;
@@ -186,27 +224,21 @@ export class RegisterComponent {
   align-items: center;
   padding: 20px;
 }
-
 input, select {
   margin: 10px 0;
   padding: 10px;
   width: 100%;
 }
-
 button {
   margin: 10px 0;
   padding: 10px;
   width: 100%;
 }
 
-.error-message {
-  color: red;
-}
-
 
 ---
 
-7. auth.service.ts
+auth/auth.service.ts
 
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
@@ -216,26 +248,39 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:8080/api/auth';
+  private baseUrl = 'http://localhost:8080/api/auth';
 
   constructor(private http: HttpClient) {}
 
   login(email: string, password: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/login`, { email, password });
+    return this.http.post(`${this.baseUrl}/login`, { email, password });
   }
 
-  register(user: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/register`, user);
+  register(data: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/register`, data);
+  }
+
+  logout(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+  }
+
+  isLoggedIn(): boolean {
+    return !!localStorage.getItem('token');
+  }
+
+  getRole(): string | null {
+    return localStorage.getItem('role');
   }
 }
 
 
 ---
 
-8. auth.guard.ts (Role-based routing guard)
+auth/auth.guard.ts
 
 import { Injectable } from '@angular/core';
-import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
+import { CanActivate, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -244,22 +289,32 @@ import { AuthService } from './auth.service';
 export class AuthGuard implements CanActivate {
   constructor(private authService: AuthService, private router: Router) {}
 
-  canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
-    const role = localStorage.getItem('role');
-    const expectedRole = route.data['role'];
-
-    if (role !== expectedRole) {
+  canActivate(): boolean {
+    if (this.authService.isLoggedIn()) {
+      return true;
+    } else {
       this.router.navigate(['/login']);
       return false;
     }
-    return true;
   }
 }
 
 
 ---
 
-9. goods-registration.component.ts
+That’s the full auth/ folder complete.
+
+Next up:
+We’ll cover the user dashboard → goods-registration component, followed by shared models & services, and finally the app module & routing setup.
+
+Shall I proceed to the user/goods-registration files?
+
+Great! Let’s continue with the next set of files related to user/goods-registration.
+
+
+---
+
+user/goods-registration/goods-registration.component.ts
 
 import { Component, OnInit } from '@angular/core';
 import { GoodsService } from '../../shared/services/goods.service';
@@ -274,10 +329,24 @@ import { NgForm } from '@angular/forms';
 })
 export class GoodsRegistrationComponent implements OnInit {
   categories: any[] = [];
-  goodsData: any = { name: '', category: '', quantity: '', unitOfMeasure: '', location: '', expiryDate: '', acquisitionDate: '', minimumStockLevel: '', price: '', supplier: '' };
-  selectedCategory: any;
+  goodsData = {
+    name: '',
+    category: '',
+    quantity: '',
+    unitOfMeasure: '',
+    location: '',
+    expiryDate: '',
+    acquisitionDate: '',
+    minimumStockLevel: '',
+    price: '',
+    supplier: ''
+  };
 
-  constructor(private goodsService: GoodsService, private categoryService: CategoryService, private router: Router) {}
+  constructor(
+    private goodsService: GoodsService,
+    private categoryService: CategoryService,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
     this.categoryService.getCategories().subscribe((data) => {
@@ -294,7 +363,10 @@ export class GoodsRegistrationComponent implements OnInit {
   }
 }
 
-10. goods-registration.component.html
+
+---
+
+user/goods-registration/goods-registration.component.html
 
 <div class="goods-registration-container">
   <h2>Register Goods</h2>
@@ -318,7 +390,7 @@ export class GoodsRegistrationComponent implements OnInit {
 
 ---
 
-11. goods-registration.component.scss
+user/goods-registration/goods-registration.component.scss
 
 .goods-registration-container {
   display: flex;
@@ -326,13 +398,11 @@ export class GoodsRegistrationComponent implements OnInit {
   align-items: center;
   padding: 20px;
 }
-
 input, select {
   margin: 10px 0;
   padding: 10px;
   width: 100%;
 }
-
 button {
   margin: 10px 0;
   padding: 10px;
@@ -342,7 +412,91 @@ button {
 
 ---
 
-12. app-routing.module.ts
+shared/services/goods.service.ts
+
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class GoodsService {
+  private apiUrl = 'http://localhost:8080/api/goods';
+
+  constructor(private http: HttpClient) {}
+
+  registerGoods(goodsData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/register`, goodsData);
+  }
+}
+
+
+---
+
+shared/services/category.service.ts
+
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class CategoryService {
+  private apiUrl = 'http://localhost:8080/api/categories';
+
+  constructor(private http: HttpClient) {}
+
+  getCategories(): Observable<any> {
+    return this.http.get(`${this.apiUrl}`);
+  }
+}
+
+
+---
+
+shared/models/goods.model.ts
+
+export interface Goods {
+  name: string;
+  category: string;
+  quantity: string;
+  unitOfMeasure: string;
+  location: string;
+  expiryDate: string;
+  acquisitionDate: string;
+  minimumStockLevel: string;
+  price: string;
+  supplier: string;
+}
+
+
+---
+
+shared/models/category.model.ts
+
+export interface Category {
+  id: string;
+  name: string;
+}
+
+
+---
+
+shared/models/user.model.ts
+
+export interface User {
+  username: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
+
+---
+
+app-routing.module.ts
 
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
@@ -354,7 +508,7 @@ import { AuthGuard } from './auth/auth.guard';
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
-  { path: 'user-dashboard', component: GoodsRegistrationComponent, canActivate: [AuthGuard], data: { role: 'User' } },
+  { path: 'user-dashboard', component: GoodsRegistrationComponent, canActivate: [AuthGuard] },
   { path: '', redirectTo: '/login', pathMatch: 'full' }
 ];
 
@@ -367,7 +521,7 @@ export class AppRoutingModule {}
 
 ---
 
-13. app.module.ts
+app.module.ts
 
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
@@ -400,14 +554,9 @@ export class AppModule {}
 
 ---
 
-This is the complete source code for the frontend implementation of Days 1-3 as per your requirements! This includes:
+This completes the source code for the user/goods-registration component, along with the services, models, and app routing.
 
-Login/Register functionality
-
-Role-based routing (Admin, User, Logistics Coordinator)
-
-**
-
+Next, we can continue by setting up any additional configurations or modules required for Day 4 or go further with other parts of the project. Let me know how you'd like to proceed!
 
 
 
