@@ -1,503 +1,38 @@
-Perfect! You’ll get the entire Angular frontend source code for Days 1 to 3 right here, broken down clearly by file and folder. This includes:
-
-Login/Register Functionality
-
-Role-based Routing
-
-User Dashboard: Goods Registration UI
-
-Shared Models & Services
-
-App Module and Routing
-
+If your authentication form (login or register) isn't appearing on your web screen, here are some common issues to check:
 
 
 ---
 
-Let’s start with the folder structure, and then I’ll give you the source code file-by-file:
+✅ 1. Ensure <router-outlet> is Present in app.component.html
 
-Folder Structure (Days 1–3)
+Angular uses the <router-outlet> directive to display routed components. Without it, routed components like your login or register forms won't render.
 
-src/
-└── app/
-    ├── auth/
-    │   ├── login/
-    │   │   ├── login.component.ts
-    │   │   ├── login.component.html
-    │   │   └── login.component.scss
-    │   ├── register/
-    │   │   ├── register.component.ts
-    │   │   ├── register.component.html
-    │   │   └── register.component.scss
-    │   ├── auth.service.ts
-    │   └── auth.guard.ts
-    ├── user/
-    │   └── goods-registration/
-    │       ├── goods-registration.component.ts
-    │       ├── goods-registration.component.html
-    │       └── goods-registration.component.scss
-    ├── shared/
-    │   ├── models/
-    │   │   ├── user.model.ts
-    │   │   ├── goods.model.ts
-    │   │   └── category.model.ts
-    │   └── services/
-    │       ├── token.service.ts
-    │       ├── goods.service.ts
-    │       └── category.service.ts
-    ├── app-routing.module.ts
-    ├── app.component.ts
-    ├── app.component.html
-    └── app.module.ts
+Check your app.component.html:
+
+<!-- app.component.html -->
+<router-outlet></router-outlet>
+
+Ensure that:
+
+<router-outlet> is present.
+
+It's not nested inside other components unintentionally.
+
+It's not duplicated in other component templates like login.component.html.
+
+
+Having <router-outlet> only in app.component.html is standard practice. Including it elsewhere can cause unexpected behavior.
 
 
 ---
 
-I’ll now begin posting the source code file-by-file. We’ll go in batches (auth, user, shared, root files). Let’s begin with auth/ folder:
+✅ 2. Verify Routing Configuration in app-routing.module.ts
 
+Ensure your routes are correctly defined and that the default path redirects to the login component.
 
----
+Example:
 
-auth/login/login.component.ts
-
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
-import { AuthService } from '../auth.service';
-
-@Component({
-  selector: 'app-login',
-  templateUrl: './login.component.html',
-  styleUrls: ['./login.component.scss']
-})
-export class LoginComponent {
-  email: string = '';
-  password: string = '';
-  errorMessage: string = '';
-
-  constructor(private authService: AuthService, private router: Router) {}
-
-  login(): void {
-    this.authService.login(this.email, this.password).subscribe(
-      (response) => {
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('role', response.role);
-        if (response.role === 'User') {
-          this.router.navigate(['/user-dashboard']);
-        } else if (response.role === 'Admin') {
-          this.router.navigate(['/admin-dashboard']);
-        } else if (response.role === 'Logistics Coordinator') {
-          this.router.navigate(['/logistics-dashboard']);
-        }
-      },
-      (error) => {
-        this.errorMessage = 'Invalid credentials, please try again!';
-      }
-    );
-  }
-
-  goToRegister(): void {
-    this.router.navigate(['/register']);
-  }
-}
-
-
----
-
-auth/login/login.component.html
-
-<div class="login-container">
-  <h2>Login</h2>
-  <form (ngSubmit)="login()">
-    <input [(ngModel)]="email" name="email" type="email" placeholder="Email" required />
-    <input [(ngModel)]="password" name="password" type="password" placeholder="Password" required />
-    <button type="submit">Login</button>
-    <div class="error-message" *ngIf="errorMessage">{{ errorMessage }}</div>
-  </form>
-  <button (click)="goToRegister()">Don't have an account? Register</button>
-</div>
-
-
----
-
-auth/login/login.component.scss
-
-.login-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-}
-input {
-  margin: 10px 0;
-  padding: 10px;
-  width: 100%;
-}
-button {
-  margin: 10px 0;
-  padding: 10px;
-  width: 100%;
-}
-.error-message {
-  color: red;
-}
-
-
----
-
-Next up:
-
-register.component.ts/html/scss
-
-auth.service.ts
-
-auth.guard.ts
-
-
-Let me continue with those in the next message. Ready?
-
-Awesome! Let’s continue with the remaining files inside the auth/ folder.
-
-
----
-
-auth/register/register.component.ts
-
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
-import { AuthService } from '../auth.service';
-
-@Component({
-  selector: 'app-register',
-  templateUrl: './register.component.html',
-  styleUrls: ['./register.component.scss']
-})
-export class RegisterComponent {
-  username: string = '';
-  email: string = '';
-  password: string = '';
-  role: string = 'User';
-
-  constructor(private authService: AuthService, private router: Router) {}
-
-  register(): void {
-    this.authService.register({
-      username: this.username,
-      email: this.email,
-      password: this.password,
-      role: this.role
-    }).subscribe(() => {
-      this.router.navigate(['/login']);
-    });
-  }
-}
-
-
----
-
-auth/register/register.component.html
-
-<div class="register-container">
-  <h2>Register</h2>
-  <form (ngSubmit)="register()">
-    <input [(ngModel)]="username" name="username" type="text" placeholder="Username" required />
-    <input [(ngModel)]="email" name="email" type="email" placeholder="Email" required />
-    <input [(ngModel)]="password" name="password" type="password" placeholder="Password" required />
-
-    <select [(ngModel)]="role" name="role" required>
-      <option value="User">User</option>
-      <option value="Admin">Admin</option>
-      <option value="Logistics Coordinator">Logistics Coordinator</option>
-    </select>
-
-    <button type="submit">Register</button>
-  </form>
-</div>
-
-
----
-
-auth/register/register.component.scss
-
-.register-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-}
-input, select {
-  margin: 10px 0;
-  padding: 10px;
-  width: 100%;
-}
-button {
-  margin: 10px 0;
-  padding: 10px;
-  width: 100%;
-}
-
-
----
-
-auth/auth.service.ts
-
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-
-@Injectable({
-  providedIn: 'root'
-})
-export class AuthService {
-  private baseUrl = 'http://localhost:8080/api/auth';
-
-  constructor(private http: HttpClient) {}
-
-  login(email: string, password: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/login`, { email, password });
-  }
-
-  register(data: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/register`, data);
-  }
-
-  logout(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
-  }
-
-  isLoggedIn(): boolean {
-    return !!localStorage.getItem('token');
-  }
-
-  getRole(): string | null {
-    return localStorage.getItem('role');
-  }
-}
-
-
----
-
-auth/auth.guard.ts
-
-import { Injectable } from '@angular/core';
-import { CanActivate, Router } from '@angular/router';
-import { AuthService } from './auth.service';
-
-@Injectable({
-  providedIn: 'root'
-})
-export class AuthGuard implements CanActivate {
-  constructor(private authService: AuthService, private router: Router) {}
-
-  canActivate(): boolean {
-    if (this.authService.isLoggedIn()) {
-      return true;
-    } else {
-      this.router.navigate(['/login']);
-      return false;
-    }
-  }
-}
-
-
----
-
-That’s the full auth/ folder complete.
-
-Next up:
-We’ll cover the user dashboard → goods-registration component, followed by shared models & services, and finally the app module & routing setup.
-
-Shall I proceed to the user/goods-registration files?
-
-Great! Let’s continue with the next set of files related to user/goods-registration.
-
-
----
-
-user/goods-registration/goods-registration.component.ts
-
-import { Component, OnInit } from '@angular/core';
-import { GoodsService } from '../../shared/services/goods.service';
-import { CategoryService } from '../../shared/services/category.service';
-import { Router } from '@angular/router';
-import { NgForm } from '@angular/forms';
-
-@Component({
-  selector: 'app-goods-registration',
-  templateUrl: './goods-registration.component.html',
-  styleUrls: ['./goods-registration.component.scss']
-})
-export class GoodsRegistrationComponent implements OnInit {
-  categories: any[] = [];
-  goodsData = {
-    name: '',
-    category: '',
-    quantity: '',
-    unitOfMeasure: '',
-    location: '',
-    expiryDate: '',
-    acquisitionDate: '',
-    minimumStockLevel: '',
-    price: '',
-    supplier: ''
-  };
-
-  constructor(
-    private goodsService: GoodsService,
-    private categoryService: CategoryService,
-    private router: Router
-  ) {}
-
-  ngOnInit(): void {
-    this.categoryService.getCategories().subscribe((data) => {
-      this.categories = data;
-    });
-  }
-
-  onSubmit(form: NgForm): void {
-    if (form.valid) {
-      this.goodsService.registerGoods(this.goodsData).subscribe(() => {
-        this.router.navigate(['/user-dashboard']);
-      });
-    }
-  }
-}
-
-
----
-
-user/goods-registration/goods-registration.component.html
-
-<div class="goods-registration-container">
-  <h2>Register Goods</h2>
-  <form #goodsForm="ngForm" (ngSubmit)="onSubmit(goodsForm)">
-    <input [(ngModel)]="goodsData.name" name="name" placeholder="Name" required />
-    <select [(ngModel)]="goodsData.category" name="category" required>
-      <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
-    </select>
-    <input [(ngModel)]="goodsData.quantity" name="quantity" placeholder="Quantity" required />
-    <input [(ngModel)]="goodsData.unitOfMeasure" name="unitOfMeasure" placeholder="Unit of Measure" required />
-    <input [(ngModel)]="goodsData.location" name="location" placeholder="Location" required />
-    <input [(ngModel)]="goodsData.expiryDate" name="expiryDate" type="date" />
-    <input [(ngModel)]="goodsData.acquisitionDate" name="acquisitionDate" type="date" />
-    <input [(ngModel)]="goodsData.minimumStockLevel" name="minimumStockLevel" placeholder="Minimum Stock Level" required />
-    <input [(ngModel)]="goodsData.price" name="price" placeholder="Price" required />
-    <input [(ngModel)]="goodsData.supplier" name="supplier" placeholder="Supplier" required />
-    <button type="submit">Register Goods</button>
-  </form>
-</div>
-
-
----
-
-user/goods-registration/goods-registration.component.scss
-
-.goods-registration-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-}
-input, select {
-  margin: 10px 0;
-  padding: 10px;
-  width: 100%;
-}
-button {
-  margin: 10px 0;
-  padding: 10px;
-  width: 100%;
-}
-
-
----
-
-shared/services/goods.service.ts
-
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-
-@Injectable({
-  providedIn: 'root'
-})
-export class GoodsService {
-  private apiUrl = 'http://localhost:8080/api/goods';
-
-  constructor(private http: HttpClient) {}
-
-  registerGoods(goodsData: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/register`, goodsData);
-  }
-}
-
-
----
-
-shared/services/category.service.ts
-
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-
-@Injectable({
-  providedIn: 'root'
-})
-export class CategoryService {
-  private apiUrl = 'http://localhost:8080/api/categories';
-
-  constructor(private http: HttpClient) {}
-
-  getCategories(): Observable<any> {
-    return this.http.get(`${this.apiUrl}`);
-  }
-}
-
-
----
-
-shared/models/goods.model.ts
-
-export interface Goods {
-  name: string;
-  category: string;
-  quantity: string;
-  unitOfMeasure: string;
-  location: string;
-  expiryDate: string;
-  acquisitionDate: string;
-  minimumStockLevel: string;
-  price: string;
-  supplier: string;
-}
-
-
----
-
-shared/models/category.model.ts
-
-export interface Category {
-  id: string;
-  name: string;
-}
-
-
----
-
-shared/models/user.model.ts
-
-export interface User {
-  username: string;
-  email: string;
-  password: string;
-  role: string;
-}
-
-
----
-
-app-routing.module.ts
-
+// app-routing.module.ts
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { LoginComponent } from './auth/login/login.component';
@@ -508,26 +43,44 @@ import { AuthGuard } from './auth/auth.guard';
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
-  { path: 'user-dashboard', component: GoodsRegistrationComponent, canActivate: [AuthGuard] },
-  { path: '', redirectTo: '/login', pathMatch: 'full' }
+  {
+    path: 'user-dashboard',
+    component: GoodsRegistrationComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'User' },
+  },
+  { path: '', redirectTo: '/login', pathMatch: 'full' }, // Default route
 ];
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],
-  exports: [RouterModule]
+  exports: [RouterModule],
 })
 export class AppRoutingModule {}
+
+Ensure:
+
+The path for login is correctly set.
+
+The default route redirects to /login.
+
 
 
 ---
 
-app.module.ts
+✅ 3. Confirm Component Declarations in app.module.ts
 
+All components used in routing must be declared in your module.
+
+Example:
+
+// app.module.ts
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { FormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms'; // Required for ngModel
 import { HttpClientModule } from '@angular/common/http';
 import { AppRoutingModule } from './app-routing.module';
+
 import { AppComponent } from './app.component';
 import { LoginComponent } from './auth/login/login.component';
 import { RegisterComponent } from './auth/register/register.component';
@@ -538,25 +91,71 @@ import { GoodsRegistrationComponent } from './user/goods-registration/goods-regi
     AppComponent,
     LoginComponent,
     RegisterComponent,
-    GoodsRegistrationComponent
+    GoodsRegistrationComponent,
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
-    FormsModule,
-    HttpClientModule
+    FormsModule, // Ensure this is imported
+    HttpClientModule,
   ],
   providers: [],
-  bootstrap: [AppComponent]
+  bootstrap: [AppComponent],
 })
 export class AppModule {}
+
+Ensure:
+
+FormsModule is imported (necessary for ngModel).
+
+All components are declared.
+
 
 
 ---
 
-This completes the source code for the user/goods-registration component, along with the services, models, and app routing.
+✅ 4. Avoid Using Component Selectors Directly in Templates
 
-Next, we can continue by setting up any additional configurations or modules required for Day 4 or go further with other parts of the project. Let me know how you'd like to proceed!
+Do not manually insert component selectors like <app-login></app-login> into templates. Instead, rely on routing to render components.
+
+Incorrect:
+
+<!-- Avoid this in app.component.html -->
+<app-login></app-login>
+
+Correct:
+
+<!-- app.component.html -->
+<router-outlet></router-outlet>
+
+This ensures that the Angular router controls which component is displayed based on the URL.
 
 
+---
 
+✅ 5. Check for Errors in the Browser Console
+
+Open your browser's developer tools and look for any errors in the console. Common issues include:
+
+Missing module imports.
+
+Incorrect component declarations.
+
+Routing errors.
+
+
+Address any errors found to ensure components render correctly.
+
+
+---
+
+If you've checked all the above and the issue persists, please provide:
+
+The content of your app.component.html.
+
+Your routing configuration (app-routing.module.ts).
+
+Any error messages from the browser console.
+
+
+With this information, I can offer more specific assistance.
