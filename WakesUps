@@ -1,116 +1,78 @@
-Great to hear that your code is running smoothly! To enhance your login page with an attractive and modern design using SCSS, here's a stylish example you can integrate into your Angular project:
+Absolutely! Here's a more attractive and modern SCSS version for your login.component.scss, using soft shadows, gradient background, rounded corners, and subtle hover effects — all while keeping responsiveness in mind:
 
 
 ---
 
-✨ Stylish SCSS Login Page Design
-
-🖼️ Preview
-
-
-
-Inspired by the Responsive Beautiful Login Page Template.
-
-
----
-
-🧩 HTML Structure (login.component.html)
-
-<div class="login-container">
-  <form class="login-form">
-    <h2>Welcome Back</h2>
-    <div class="input-group">
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" required />
-    </div>
-    <div class="input-group">
-      <label for="password">Password</label>
-      <input type="password" id="password" name="password" required />
-    </div>
-    <button type="submit">Login</button>
-    <p class="signup-link">Don't have an account? <a href="#">Sign Up</a></p>
-  </form>
-</div>
-
-
----
-
-🎨 SCSS Styling (login.component.scss)
+Updated login.component.scss
 
 .login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background: linear-gradient(135deg, #74ebd5, #acb6e5);
+  max-width: 400px;
+  margin: 80px auto;
+  padding: 30px 40px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 
-  .login-form {
-    background: #ffffff;
-    padding: 2rem 3rem;
-    border-radius: 12px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    width: 100%;
-    max-width: 400px;
+  h2 {
+    text-align: center;
+    margin-bottom: 24px;
+    color: #2c3e50;
+  }
 
-    h2 {
-      text-align: center;
-      margin-bottom: 1.5rem;
-      color: #333;
+  form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  input {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    transition: 0.3s ease;
+
+    &:focus {
+      border-color: #4a90e2;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
     }
+  }
 
-    .input-group {
-      margin-bottom: 1rem;
+  button[type='submit'] {
+    background: linear-gradient(to right, #4a90e2, #357ABD);
+    color: white;
+    border: none;
+    padding: 12px 0;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s ease;
 
-      label {
-        display: block;
-        margin-bottom: 0.5rem;
-        color: #555;
-      }
-
-      input {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        transition: border-color 0.3s;
-
-        &:focus {
-          border-color: #74ebd5;
-          outline: none;
-        }
-      }
+    &:hover {
+      background: linear-gradient(to right, #357ABD, #2c5aa0);
     }
+  }
 
-    button {
-      width: 100%;
-      padding: 0.75rem;
-      background-color: #74ebd5;
-      border: none;
-      border-radius: 8px;
-      color: #fff;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background-color 0.3s;
+  .error-message {
+    color: #e74c3c;
+    margin-top: 10px;
+    text-align: center;
+    font-weight: 500;
+  }
 
-      &:hover {
-        background-color: #67d8c2;
-      }
-    }
+  button:last-child {
+    background: none;
+    color: #357ABD;
+    border: none;
+    margin-top: 16px;
+    font-size: 14px;
+    cursor: pointer;
 
-    .signup-link {
-      text-align: center;
-      margin-top: 1rem;
-      color: #555;
-
-      a {
-        color: #74ebd5;
-        text-decoration: none;
-
-        &:hover {
-          text-decoration: underline;
-        }
-      }
+    &:hover {
+      text-decoration: underline;
     }
   }
 }
@@ -118,36 +80,101 @@ Inspired by the Responsive Beautiful Login Page Template.
 
 ---
 
-⚙️ Integration Steps
+This SCSS style will give your login form a clean, modern look that works well on both desktop and mobile.
 
-1. Update HTML: Replace the content of your login.component.html with the provided HTML structure.
+Would you like a dark theme version too? Or shall I continue with register.component.ts/html/scss next?
 
-
-2. Apply SCSS: Copy the SCSS code into your login.component.scss file.
-
-
-3. Ensure SCSS Compilation: Make sure your Angular project is set up to compile SCSS. If you initially created your project with SCSS support, this should already be configured.
-
-
-4. Responsive Design: The provided styles are responsive. However, you can further enhance responsiveness by adding media queries as needed.
-
-
+Here’s an attractive and cohesive SCSS for your register page that matches and complements the login page style:
 
 
 ---
 
-🔗 Additional Resources
+auth/register/register.component.scss
 
-For more inspiration and ready-to-use login form templates, consider exploring the following resources:
+.register-container {
+  max-width: 400px;
+  margin: 60px auto;
+  padding: 30px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  text-align: center;
 
-35+ CSS Login Forms - FreeFrontend
+  h2 {
+    margin-bottom: 20px;
+    font-size: 28px;
+    color: #333;
+  }
 
-42 Best Free HTML5 And CSS3 Login Forms 2025 - Colorlib
+  form {
+    display: flex;
+    flex-direction: column;
 
-30+ Free Login & Registration Form Templates - CodingNepal
+    input,
+    select {
+      margin: 10px 0;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border 0.3s;
 
+      &:focus {
+        border-color: #3f51b5;
+        outline: none;
+      }
+    }
+
+    button[type='submit'] {
+      margin-top: 20px;
+      padding: 12px;
+      background-color: #3f51b5;
+      color: white;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+
+      &:hover {
+        background-color: #303f9f;
+      }
+    }
+
+    .error-message {
+      color: red;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+  }
+
+  button:not([type='submit']) {
+    margin-top: 20px;
+    background: none;
+    border: none;
+    color: #3f51b5;
+    font-size: 14px;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
 
 
 ---
 
-Feel free to customize the colors, fonts, and layout to better match your application's branding. If you need assistance with further customization or integrating additional features like "Remember Me" checkboxes or social login buttons, don't hesitate to ask!
+This design includes:
+
+Soft shadows and rounded corners for a clean card look
+
+Stylish button with hover effects
+
+Input fields styled similarly to login for design consistency
+
+
+Let me know if you want to apply a background image or gradient for the whole page or continue with the .ts logic next!
+
+
+
