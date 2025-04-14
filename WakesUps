@@ -1,478 +1,184 @@
-# Enhanced Modern & Colorful SCSS
+Got it! Let me upgrade the SCSS styles for both Login and Register pages with a modern, colorful, and visually appealing design using gradients, vibrant colors, and subtle animations.
 
-## Login Page SCSS
-```scss
+
+---
+
+Modern & Colorful Login Page SCSS
+
 .login-container {
   max-width: 400px;
   margin: 80px auto;
   padding: 40px 30px;
-  border-radius: 25px;
+  border-radius: 20px;
   background: linear-gradient(135deg, #6a11cb, #2575fc);
-  position: relative;
-  overflow: hidden;
   color: #fff;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   text-align: center;
   font-family: 'Segoe UI', sans-serif;
-  transform: translateY(0);
-  transition: transform 0.5s ease, box-shadow 0.5s ease;
-  
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  }
-  
-  // Decorative elements
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
-    z-index: 0;
-    pointer-events: none;
-    animation: shine 15s infinite linear;
-  }
-  
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    right: -10px;
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    background: linear-gradient(225deg, rgba(255,255,255,0.2), rgba(255,255,255,0));
-    z-index: 0;
-    filter: blur(15px);
-  }
 
   h2 {
-    margin-bottom: 30px;
-    font-size: 38px;
+    margin-bottom: 25px;
+    font-size: 32px;
     font-weight: 700;
-    letter-spacing: 1px;
-    position: relative;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 70px;
-      height: 4px;
-      background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.8), rgba(255,255,255,0));
-      border-radius: 2px;
-    }
   }
 
   form {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    position: relative;
-    z-index: 1;
+    gap: 15px;
 
     input {
-      padding: 15px;
+      padding: 12px;
       border: none;
-      border-radius: 15px;
+      border-radius: 10px;
       font-size: 16px;
       outline: none;
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.9);
       color: #333;
-      transition: all 0.4s ease;
-      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
-      backdrop-filter: blur(5px);
+      transition: box-shadow 0.3s ease;
 
       &:focus {
-        background: rgba(255, 255, 255, 0.95);
-        box-shadow: 0 0 20px rgba(255, 255, 255, 0.4), inset 0 2px 5px rgba(0, 0, 0, 0.05);
-        transform: scale(1.02);
-      }
-      
-      &::placeholder {
-        color: #888;
-        transition: all 0.3s ease;
-      }
-      
-      &:focus::placeholder {
-        opacity: 0.5;
-        transform: translateX(5px);
+        box-shadow: 0 0 10px #fff;
       }
     }
 
     button[type='submit'] {
-      padding: 14px;
-      font-size: 18px;
+      padding: 12px;
+      font-size: 16px;
       font-weight: 600;
-      background: linear-gradient(45deg, #ffffff, #f5f5f5);
+      background-color: #ffffff;
       color: #2575fc;
       border: none;
-      border-radius: 15px;
+      border-radius: 10px;
       cursor: pointer;
-      transition: all 0.4s ease;
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-      position: relative;
-      overflow: hidden;
-      
-      &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-        transition: 0.5s;
-      }
+      transition: all 0.3s ease;
 
       &:hover {
-        background: linear-gradient(45deg, #f5f5f5, #ffffff);
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        color: #6a11cb;
-        
-        &::before {
-          left: 100%;
-          transition: 0.5s;
-        }
-      }
-      
-      &:active {
-        transform: translateY(0);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background-color: #e0e0e0;
       }
     }
 
     .error-message {
       color: #ffdddd;
       background: rgba(255, 0, 0, 0.2);
-      padding: 10px;
-      border-radius: 10px;
-      font-size: 14px;
-      animation: pulse 2s infinite;
-      backdrop-filter: blur(3px);
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+      padding: 8px;
+      border-radius: 6px;
     }
   }
 
   button:not([type='submit']) {
-    margin-top: 25px;
+    margin-top: 20px;
     background: transparent;
     color: #fff;
     border: none;
-    font-size: 15px;
+    font-size: 14px;
     cursor: pointer;
-    position: relative;
-    padding: 5px;
-    
-    &::after {
-      content: '';
-      position: absolute;
-      width: 0;
-      height: 2px;
-      bottom: 0;
-      left: 50%;
-      background: #fff;
-      transition: all 0.3s ease;
-      transform: translateX(-50%);
-    }
-    
+    text-decoration: underline;
+
     &:hover {
       color: #ffe;
-      text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-      
-      &::after {
-        width: 80%;
-      }
     }
   }
 }
 
-@keyframes shine {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
 
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.8;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-```
+---
 
-## Register Page SCSS
-```scss
+Modern & Colorful Register Page SCSS
+
 .register-container {
   max-width: 450px;
   margin: 80px auto;
   padding: 40px 30px;
-  border-radius: 25px;
+  border-radius: 20px;
   background: linear-gradient(135deg, #fc5c7d, #6a82fb);
-  position: relative;
-  overflow: hidden;
   color: #fff;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   text-align: center;
   font-family: 'Segoe UI', sans-serif;
-  transform: translateY(0);
-  transition: transform 0.5s ease, box-shadow 0.5s ease;
-  
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-  }
-  
-  // Decorative elements
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
-    z-index: 0;
-    pointer-events: none;
-    animation: shine 15s infinite linear;
-  }
-  
-  &::after {
-    content: '';
-    position: absolute;
-    top: -10px;
-    left: -10px;
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    background: linear-gradient(225deg, rgba(255,255,255,0.2), rgba(255,255,255,0));
-    z-index: 0;
-    filter: blur(15px);
-  }
 
   h2 {
-    margin-bottom: 30px;
-    font-size: 38px;
+    margin-bottom: 25px;
+    font-size: 32px;
     font-weight: 700;
-    letter-spacing: 1px;
-    position: relative;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 70px;
-      height: 4px;
-      background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.8), rgba(255,255,255,0));
-      border-radius: 2px;
-    }
   }
 
   form {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    position: relative;
-    z-index: 1;
+    gap: 15px;
 
     input,
     select {
-      padding: 15px;
+      padding: 12px;
       border: none;
-      border-radius: 15px;
+      border-radius: 10px;
       font-size: 16px;
       outline: none;
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.9);
       color: #333;
-      transition: all 0.4s ease;
-      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
-      backdrop-filter: blur(5px);
+      transition: box-shadow 0.3s ease;
 
       &:focus {
-        background: rgba(255, 255, 255, 0.95);
-        box-shadow: 0 0 20px rgba(255, 255, 255, 0.4), inset 0 2px 5px rgba(0, 0, 0, 0.05);
-        transform: scale(1.02);
-      }
-      
-      &::placeholder {
-        color: #888;
-        transition: all 0.3s ease;
-      }
-      
-      &:focus::placeholder {
-        opacity: 0.5;
-        transform: translateX(5px);
+        box-shadow: 0 0 10px #fff;
       }
     }
 
     button[type='submit'] {
-      padding: 14px;
-      font-size: 18px;
+      padding: 12px;
+      font-size: 16px;
       font-weight: 600;
-      background: linear-gradient(45deg, #ffffff, #f5f5f5);
+      background-color: #ffffff;
       color: #fc5c7d;
       border: none;
-      border-radius: 15px;
+      border-radius: 10px;
       cursor: pointer;
-      transition: all 0.4s ease;
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-      position: relative;
-      overflow: hidden;
-      
-      &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-        transition: 0.5s;
-      }
+      transition: all 0.3s ease;
 
       &:hover {
-        background: linear-gradient(45deg, #f5f5f5, #ffffff);
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        color: #6a82fb;
-        
-        &::before {
-          left: 100%;
-          transition: 0.5s;
-        }
-      }
-      
-      &:active {
-        transform: translateY(0);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background-color: #f8f8f8;
       }
     }
 
     .error-message {
       color: #ffdddd;
       background: rgba(255, 0, 0, 0.2);
-      padding: 10px;
-      border-radius: 10px;
-      font-size: 14px;
-      animation: pulse 2s infinite;
-      backdrop-filter: blur(3px);
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+      padding: 8px;
+      border-radius: 6px;
     }
   }
 
   button:not([type='submit']) {
-    margin-top: 25px;
+    margin-top: 20px;
     background: transparent;
     color: #fff;
     border: none;
-    font-size: 15px;
+    font-size: 14px;
     cursor: pointer;
-    position: relative;
-    padding: 5px;
-    
-    &::after {
-      content: '';
-      position: absolute;
-      width: 0;
-      height: 2px;
-      bottom: 0;
-      left: 50%;
-      background: #fff;
-      transition: all 0.3s ease;
-      transform: translateX(-50%);
-    }
-    
+    text-decoration: underline;
+
     &:hover {
       color: #ffe;
-      text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-      
-      &::after {
-        width: 80%;
-      }
     }
   }
 }
 
-// Shared Animation for Both Pages
-@keyframes shine {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
 
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.8;
-  }
-  100% {
-    opacity: 1;
-  }
-}
+---
 
-// Optional: Full Page Background Effect
-body {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-  background: linear-gradient(45deg, #080420, #1a1a40);
-  position: relative;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle at top right, rgba(106, 17, 203, 0.1), transparent 30%),
-                radial-gradient(circle at bottom left, rgba(252, 92, 125, 0.1), transparent 30%);
-    z-index: -1;
-  }
-}
+These new styles bring:
 
-// Optional: Responsive Styles for Mobile
-@media (max-width: 480px) {
-  .login-container,
-  .register-container {
-    max-width: 90%;
-    margin: 40px auto;
-    padding: 30px 20px;
-    
-    h2 {
-      font-size: 32px;
-    }
-    
-    form {
-      gap: 15px;
-      
-      input,
-      select,
-      button[type='submit'] {
-        padding: 12px;
-      }
-    }
-  }
-}
-```
+Gradients with a modern color palette
+
+Glass-like input fields
+
+Glow effects on focus
+
+Smooth transitions and hover effects
+
+Consistent and stylish layout for both login and register pages
+
+
+Let me know if you want to add a full-page gradient background or responsive mobile styles next!
+
+, make this scss more attractive.
