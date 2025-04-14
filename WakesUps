@@ -1,182 +1,238 @@
-Got it! Let me upgrade the SCSS styles for both Login and Register pages with a modern, colorful, and visually appealing design using gradients, vibrant colors, and subtle animations.
+Perfect—let’s begin with an attractive, professional SCSS for your Login page. I’ll follow modern design principles using glassmorphism, gradients, smooth interactions, and responsive layout.
 
 
 ---
 
-Modern & Colorful Login Page SCSS
+Login Page: login.component.scss (Attractive & Professional)
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
 
 .login-container {
-  max-width: 400px;
-  margin: 80px auto;
-  padding: 40px 30px;
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 20px;
-  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  padding: 40px 30px;
+  width: 100%;
+  max-width: 420px;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
   color: #fff;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   text-align: center;
-  font-family: 'Segoe UI', sans-serif;
+  animation: fadeIn 0.6s ease-in-out;
+}
 
-  h2 {
-    margin-bottom: 25px;
-    font-size: 32px;
-    font-weight: 700;
+.login-container h2 {
+  margin-bottom: 20px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.login-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.login-container input {
+  padding: 12px 15px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 15px;
+  transition: background 0.3s ease;
+}
+
+.login-container input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.login-container input::placeholder {
+  color: #ddd;
+}
+
+.login-container button {
+  padding: 12px;
+  background-color: #ff6f61;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-container button:hover {
+  background-color: #ff3e3e;
+}
+
+.error-message {
+  margin-top: -10px;
+  color: #ffcdd2;
+  font-size: 14px;
+  background: rgba(255, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.login-container .switch-auth {
+  margin-top: 16px;
+  font-size: 14px;
+  color: #eee;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.login-container .switch-auth:hover {
+  color: #fff;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
   }
-
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-
-    input {
-      padding: 12px;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      outline: none;
-      background: rgba(255, 255, 255, 0.9);
-      color: #333;
-      transition: box-shadow 0.3s ease;
-
-      &:focus {
-        box-shadow: 0 0 10px #fff;
-      }
-    }
-
-    button[type='submit'] {
-      padding: 12px;
-      font-size: 16px;
-      font-weight: 600;
-      background-color: #ffffff;
-      color: #2575fc;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-
-      &:hover {
-        background-color: #e0e0e0;
-      }
-    }
-
-    .error-message {
-      color: #ffdddd;
-      background: rgba(255, 0, 0, 0.2);
-      padding: 8px;
-      border-radius: 6px;
-    }
-  }
-
-  button:not([type='submit']) {
-    margin-top: 20px;
-    background: transparent;
-    color: #fff;
-    border: none;
-    font-size: 14px;
-    cursor: pointer;
-    text-decoration: underline;
-
-    &:hover {
-      color: #ffe;
-    }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 
 ---
 
-Modern & Colorful Register Page SCSS
+This will make your login screen eye-catching and smooth, with a soft glass effect and a sleek background.
+
+Next: I’ll generate an equally attractive SCSS for your Register page that matches this style.
+
+Shall I proceed?
+
+Awesome! Here's the professional, attractive SCSS for your Register page, matching the design style of the login page with a colorful, glassmorphic look and smooth interactions.
+
+
+---
+
+Register Page: register.component.scss
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #ff758c, #ff7eb3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
 
 .register-container {
-  max-width: 450px;
-  margin: 80px auto;
-  padding: 40px 30px;
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 20px;
-  background: linear-gradient(135deg, #fc5c7d, #6a82fb);
+  padding: 40px 30px;
+  width: 100%;
+  max-width: 460px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   color: #fff;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   text-align: center;
-  font-family: 'Segoe UI', sans-serif;
+  animation: slideIn 0.5s ease-in-out;
+}
 
-  h2 {
-    margin-bottom: 25px;
-    font-size: 32px;
-    font-weight: 700;
+.register-container h2 {
+  margin-bottom: 20px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.register-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.register-container input {
+  padding: 12px 15px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.register-container input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.register-container input::placeholder {
+  color: #e0e0e0;
+}
+
+.register-container button {
+  padding: 12px;
+  background-color: #00c9a7;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.register-container button:hover {
+  background-color: #00b894;
+}
+
+.error-message {
+  margin-top: -10px;
+  color: #ffdddd;
+  font-size: 14px;
+  background: rgba(255, 0, 0, 0.2);
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.register-container .switch-auth {
+  margin-top: 16px;
+  font-size: 14px;
+  color: #eee;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.register-container .switch-auth:hover {
+  color: #fff;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
   }
-
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-
-    input,
-    select {
-      padding: 12px;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      outline: none;
-      background: rgba(255, 255, 255, 0.9);
-      color: #333;
-      transition: box-shadow 0.3s ease;
-
-      &:focus {
-        box-shadow: 0 0 10px #fff;
-      }
-    }
-
-    button[type='submit'] {
-      padding: 12px;
-      font-size: 16px;
-      font-weight: 600;
-      background-color: #ffffff;
-      color: #fc5c7d;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-
-      &:hover {
-        background-color: #f8f8f8;
-      }
-    }
-
-    .error-message {
-      color: #ffdddd;
-      background: rgba(255, 0, 0, 0.2);
-      padding: 8px;
-      border-radius: 6px;
-    }
-  }
-
-  button:not([type='submit']) {
-    margin-top: 20px;
-    background: transparent;
-    color: #fff;
-    border: none;
-    font-size: 14px;
-    cursor: pointer;
-    text-decoration: underline;
-
-    &:hover {
-      color: #ffe;
-    }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 
 ---
 
-These new styles bring:
+Both SCSS files now give your login and register pages a clean, professional, and modern UI feel. If you'd like, I can also generate improved HTML structure for better visual balance and accessibility.
 
-Gradients with a modern color palette
-
-Glass-like input fields
-
-Glow effects on focus
-
-Smooth transitions and hover effects
-
-Consistent and stylish layout for both login and register pages
+Want that too?
 
 
-Let me know if you want to add a full-page gradient background or responsive mobile styles next!
+
