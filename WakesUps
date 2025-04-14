@@ -1,163 +1,82 @@
-Absolutely! Here's a more attractive and modern SCSS version for your login.component.scss, using soft shadows, gradient background, rounded corners, and subtle hover effects — all while keeping responsiveness in mind:
+Got it! Let me upgrade the SCSS styles for both Login and Register pages with a modern, colorful, and visually appealing design using gradients, vibrant colors, and subtle animations.
 
 
 ---
 
-Updated login.component.scss
+Modern & Colorful Login Page SCSS
 
 .login-container {
   max-width: 400px;
   margin: 80px auto;
-  padding: 30px 40px;
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-
-  h2 {
-    text-align: center;
-    margin-bottom: 24px;
-    color: #2c3e50;
-  }
-
-  form {
-    display: flex;
-    flex-direction: column;
-  }
-
-  input {
-    margin-bottom: 16px;
-    padding: 12px 16px;
-    font-size: 16px;
-    border: 1px solid #ccc;
-    border-radius: 10px;
-    transition: 0.3s ease;
-
-    &:focus {
-      border-color: #4a90e2;
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
-    }
-  }
-
-  button[type='submit'] {
-    background: linear-gradient(to right, #4a90e2, #357ABD);
-    color: white;
-    border: none;
-    padding: 12px 0;
-    border-radius: 10px;
-    font-weight: bold;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background 0.3s ease;
-
-    &:hover {
-      background: linear-gradient(to right, #357ABD, #2c5aa0);
-    }
-  }
-
-  .error-message {
-    color: #e74c3c;
-    margin-top: 10px;
-    text-align: center;
-    font-weight: 500;
-  }
-
-  button:last-child {
-    background: none;
-    color: #357ABD;
-    border: none;
-    margin-top: 16px;
-    font-size: 14px;
-    cursor: pointer;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
-
----
-
-This SCSS style will give your login form a clean, modern look that works well on both desktop and mobile.
-
-Would you like a dark theme version too? Or shall I continue with register.component.ts/html/scss next?
-
-Here’s an attractive and cohesive SCSS for your register page that matches and complements the login page style:
-
-
----
-
-auth/register/register.component.scss
-
-.register-container {
-  max-width: 400px;
-  margin: 60px auto;
-  padding: 30px;
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 40px 30px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: #fff;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   text-align: center;
+  font-family: 'Segoe UI', sans-serif;
 
   h2 {
-    margin-bottom: 20px;
-    font-size: 28px;
-    color: #333;
+    margin-bottom: 25px;
+    font-size: 32px;
+    font-weight: 700;
   }
 
   form {
     display: flex;
     flex-direction: column;
+    gap: 15px;
 
-    input,
-    select {
-      margin: 10px 0;
+    input {
       padding: 12px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
+      border: none;
+      border-radius: 10px;
       font-size: 16px;
-      transition: border 0.3s;
+      outline: none;
+      background: rgba(255, 255, 255, 0.9);
+      color: #333;
+      transition: box-shadow 0.3s ease;
 
       &:focus {
-        border-color: #3f51b5;
-        outline: none;
+        box-shadow: 0 0 10px #fff;
       }
     }
 
     button[type='submit'] {
-      margin-top: 20px;
       padding: 12px;
-      background-color: #3f51b5;
-      color: white;
+      font-size: 16px;
       font-weight: 600;
+      background-color: #ffffff;
+      color: #2575fc;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: all 0.3s ease;
 
       &:hover {
-        background-color: #303f9f;
+        background-color: #e0e0e0;
       }
     }
 
     .error-message {
-      color: red;
-      margin-top: 10px;
-      font-size: 14px;
+      color: #ffdddd;
+      background: rgba(255, 0, 0, 0.2);
+      padding: 8px;
+      border-radius: 6px;
     }
   }
 
   button:not([type='submit']) {
     margin-top: 20px;
-    background: none;
+    background: transparent;
+    color: #fff;
     border: none;
-    color: #3f51b5;
     font-size: 14px;
     cursor: pointer;
+    text-decoration: underline;
 
     &:hover {
-      text-decoration: underline;
+      color: #ffe;
     }
   }
 }
@@ -165,16 +84,99 @@ auth/register/register.component.scss
 
 ---
 
-This design includes:
+Modern & Colorful Register Page SCSS
 
-Soft shadows and rounded corners for a clean card look
+.register-container {
+  max-width: 450px;
+  margin: 80px auto;
+  padding: 40px 30px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #fc5c7d, #6a82fb);
+  color: #fff;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  font-family: 'Segoe UI', sans-serif;
 
-Stylish button with hover effects
+  h2 {
+    margin-bottom: 25px;
+    font-size: 32px;
+    font-weight: 700;
+  }
 
-Input fields styled similarly to login for design consistency
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+
+    input,
+    select {
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      outline: none;
+      background: rgba(255, 255, 255, 0.9);
+      color: #333;
+      transition: box-shadow 0.3s ease;
+
+      &:focus {
+        box-shadow: 0 0 10px #fff;
+      }
+    }
+
+    button[type='submit'] {
+      padding: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      background-color: #ffffff;
+      color: #fc5c7d;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background-color: #f8f8f8;
+      }
+    }
+
+    .error-message {
+      color: #ffdddd;
+      background: rgba(255, 0, 0, 0.2);
+      padding: 8px;
+      border-radius: 6px;
+    }
+  }
+
+  button:not([type='submit']) {
+    margin-top: 20px;
+    background: transparent;
+    color: #fff;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:hover {
+      color: #ffe;
+    }
+  }
+}
 
 
-Let me know if you want to apply a background image or gradient for the whole page or continue with the .ts logic next!
+---
+
+These new styles bring:
+
+Gradients with a modern color palette
+
+Glass-like input fields
+
+Glow effects on focus
+
+Smooth transitions and hover effects
+
+Consistent and stylish layout for both login and register pages
 
 
-
+Let me know if you want to add a full-page gradient background or responsive mobile styles next!
