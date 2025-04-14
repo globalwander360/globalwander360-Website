@@ -1,9 +1,16 @@
-Got it! Let me upgrade the SCSS styles for both Login and Register pages with a modern, colorful, and visually appealing design using gradients, vibrant colors, and subtle animations.
+Great! Let’s refine both Login and Register SCSS with:
+
+Stylized dropdown for register page
+
+Attractive buttons with gradient + hover
+
+Consistent styling for a polished UI
+
 
 
 ---
 
-Modern & Colorful Login Page SCSS
+✅ Updated Login Page SCSS
 
 .login-container {
   max-width: 400px;
@@ -33,12 +40,12 @@ Modern & Colorful Login Page SCSS
       border-radius: 10px;
       font-size: 16px;
       outline: none;
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.95);
       color: #333;
-      transition: box-shadow 0.3s ease;
+      transition: all 0.3s ease;
 
       &:focus {
-        box-shadow: 0 0 10px #fff;
+        box-shadow: 0 0 10px #ffffff;
       }
     }
 
@@ -46,15 +53,16 @@ Modern & Colorful Login Page SCSS
       padding: 12px;
       font-size: 16px;
       font-weight: 600;
-      background-color: #ffffff;
+      background: linear-gradient(135deg, #ffffff, #d1e3ff);
       color: #2575fc;
       border: none;
       border-radius: 10px;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
 
       &:hover {
-        background-color: #e0e0e0;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
       }
     }
 
@@ -84,7 +92,7 @@ Modern & Colorful Login Page SCSS
 
 ---
 
-Modern & Colorful Register Page SCSS
+✅ Updated Register Page SCSS (with styled dropdown)
 
 .register-container {
   max-width: 450px;
@@ -115,28 +123,38 @@ Modern & Colorful Register Page SCSS
       border-radius: 10px;
       font-size: 16px;
       outline: none;
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.95);
       color: #333;
       transition: box-shadow 0.3s ease;
 
       &:focus {
-        box-shadow: 0 0 10px #fff;
+        box-shadow: 0 0 10px #ffffff;
       }
+    }
+
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,<svg fill='gray' height='24' viewBox='0 0 24 24' width='24'><path d='M7 10l5 5 5-5z'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+      padding-right: 36px;
     }
 
     button[type='submit'] {
       padding: 12px;
       font-size: 16px;
       font-weight: 600;
-      background-color: #ffffff;
+      background: linear-gradient(135deg, #ffffff, #ffdce0);
       color: #fc5c7d;
       border: none;
       border-radius: 10px;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
 
       &:hover {
-        background-color: #f8f8f8;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
       }
     }
 
@@ -166,19 +184,13 @@ Modern & Colorful Register Page SCSS
 
 ---
 
-These new styles bring:
+Let me know if you'd like me to add:
 
-Gradients with a modern color palette
+Responsive design for mobile
 
-Glass-like input fields
+Full-page gradient background
 
-Glow effects on focus
-
-Smooth transitions and hover effects
-
-Consistent and stylish layout for both login and register pages
+Animations or icons
 
 
-Let me know if you want to add a full-page gradient background or responsive mobile styles next!
-
-, make this scss more attractive.
+Want to see a live preview with real sample HTML too?
