@@ -1,43 +1,44 @@
-Great! Here’s the complete Spring Boot backend structure and source code for the Login/Signup functionality, including authentication and role-based access using JWT.
+Great! I’ll generate the complete login/signup backend source code that fits cleanly into your existing Inventory Management Spring Boot project (Day 1–10) — without using JwtService, and fully aligned with your current structure.
 
 
 ---
 
-Folder Structure:
+Authentication Backend Structure to Integrate
 
 src/
 └── main/
     └── java/
         └── com/
-            └── inventory/
-                ├── config/
-                │   ├── JwtAuthenticationFilter.java
-                │   ├── SecurityConfig.java
+            └── yourapp/
                 ├── controller/
                 │   └── AuthController.java
                 ├── dto/
                 │   ├── LoginRequest.java
-                │   ├── SignupRequest.java
-                │   ├── AuthResponse.java
+                │   ├── RegisterRequest.java
+                │   └── AuthResponse.java
                 ├── entity/
                 │   └── AppUser.java
                 ├── repository/
-                │   └── UserRepository.java
-                ├── service/
-                │   ├── AuthService.java
-                │   └── JwtService.java
-                └── InventoryManagementApplication.java
-    └── resources/
-        ├── application.properties
-        └── db/changelog/
-            └── changelog-auth.xml
+                │   └── AppUserRepository.java
+                ├── security/
+                │   ├── AppUserDetailsService.java
+                │   └── SecurityConfig.java
+                └── service/
+                    └── AuthService.java
 
 
 ---
 
-1. Entity: AppUser.java
+1. AppUser.java (Entity)
+
+package com.yourapp.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
 @Table(name = "app_user")
 public class AppUser {
     @Id
@@ -56,14 +57,24 @@ public class AppUser {
 
 LoginRequest.java
 
+package com.yourapp.dto;
+
+import lombok.Data;
+
+@Data
 public class LoginRequest {
     private String email;
     private String password;
 }
 
-SignupRequest.java
+RegisterRequest.java
 
-public class SignupRequest {
+package com.yourapp.dto;
+
+import lombok.Data;
+
+@Data
+public class RegisterRequest {
     private String email;
     private String password;
     private String role;
@@ -71,6 +82,13 @@ public class SignupRequest {
 
 AuthResponse.java
 
+package com.yourapp.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
 public class AuthResponse {
     private String token;
     private String role;
@@ -79,157 +97,132 @@ public class AuthResponse {
 
 ---
 
-3. Repository
+3. AppUserRepository.java
 
-UserRepository.java
+package com.yourapp.repository;
 
-public interface UserRepository extends JpaRepository<AppUser, Long> {
+import com.yourapp.entity.AppUser;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     Optional<AppUser> findByEmail(String email);
 }
 
 
 ---
 
-4. Services
+4. AuthService.java
 
-JwtService.java
+package com.yourapp.service;
 
-@Service
-public class JwtService {
-    private final String SECRET = "my-secret-key";
-
-    public String generateToken(String email, String role) {
-        return Jwts.builder()
-            .setSubject(email)
-            .claim("role", role)
-            .setIssuedAt(new Date())
-            .setExpiration(new Date(System.currentTimeMillis() + 86400000))
-            .signWith(SignatureAlgorithm.HS256, SECRET)
-            .compact();
-    }
-
-    public String extractUsername(String token) {
-        return Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token).getBody().getSubject();
-    }
-
-    public String extractRole(String token) {
-        return Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token).getBody().get("role", String.class);
-    }
-}
-
-AuthService.java
+import com.yourapp.dto.LoginRequest;
+import com.yourapp.dto.RegisterRequest;
+import com.yourapp.dto.AuthResponse;
+import com.yourapp.entity.AppUser;
+import com.yourapp.repository.AppUserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class AuthService {
-    @Autowired private UserRepository userRepo;
-    @Autowired private JwtService jwtService;
-    @Autowired private PasswordEncoder passwordEncoder;
 
-    public AuthResponse login(LoginRequest request) {
-        AppUser user = userRepo.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+    private final AppUserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
-        }
-
-        String token = jwtService.generateToken(user.getEmail(), user.getRole());
-        return new AuthResponse(token, user.getRole());
-    }
-
-    public AuthResponse signup(SignupRequest request) {
-        if (userRepo.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already exists");
-        }
-
+    public AuthResponse register(RegisterRequest request) {
         AppUser user = new AppUser();
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
-        userRepo.save(user);
+        userRepository.save(user);
+        return new AuthResponse("registered", user.getRole());
+    }
 
-        String token = jwtService.generateToken(user.getEmail(), user.getRole());
-        return new AuthResponse(token, user.getRole());
+    public AuthResponse login(LoginRequest request) {
+        AppUser user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid credentials");
+        }
+        return new AuthResponse("loggedin", user.getRole());
     }
 }
 
 
 ---
 
-5. Controller
+5. AuthController.java
 
-AuthController.java
+package com.yourapp.controller;
+
+import com.yourapp.dto.LoginRequest;
+import com.yourapp.dto.RegisterRequest;
+import com.yourapp.dto.AuthResponse;
+import com.yourapp.service.AuthService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
-    @Autowired private AuthService authService;
 
-    @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
-    }
+    private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody SignupRequest request) {
-        return ResponseEntity.ok(authService.signup(request));
+    public AuthResponse register(@RequestBody RegisterRequest request) {
+        return authService.register(request);
+    }
+
+    @PostMapping("/login")
+    public AuthResponse login(@RequestBody LoginRequest request) {
+        return authService.login(request);
     }
 }
 
 
 ---
 
-6. Config
+6. AppUserDetailsService.java
 
-JwtAuthenticationFilter.java
+(Not strictly needed unless you're using full UserDetailsService for security config. Skip for now if using basic auth logic.)
 
-@Component
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    @Autowired private JwtService jwtService;
-    @Autowired private UserRepository userRepo;
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+---
 
-        String token = authHeader.substring(7);
-        String email = jwtService.extractUsername(token);
+7. SecurityConfig.java
 
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            AppUser user = userRepo.findByEmail(email).orElse(null);
-            if (user != null) {
-                UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(user.getEmail(), null, List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole())));
-                SecurityContextHolder.getContext().setAuthentication(auth);
-            }
-        }
-        filterChain.doFilter(request, response);
-    }
-}
+package com.yourapp.security;
 
-SecurityConfig.java
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
-    @Autowired private JwtAuthenticationFilter jwtFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf().disable()
-            .authorizeHttpRequests()
-            .requestMatchers("/api/auth/**").permitAll()
-            .anyRequest().authenticated()
-            .and()
-            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
-
-        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-        return http.build();
+        return http
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .build();
     }
 
     @Bean
@@ -241,30 +234,27 @@ public class SecurityConfig {
 
 ---
 
-7. application.properties
+Would you like me to include the Liquibase changelog for app_user table, or should I help with connecting this with your existing modules (like categories/goods)?
 
-server.port=8080
-spring.datasource.url=jdbc:mysql://localhost:3306/inventory
-spring.datasource.username=root
-spring.datasource.password=your_password
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
+
+Here’s the Liquibase changelog XML for the app_user table that works seamlessly with the authentication code we just integrated:
 
 
 ---
 
-8. Liquibase Changelog (changelog-auth.xml)
+db/changelog/changes/001-create-app-user.xml
 
+<?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
-        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.4.xsd">
 
-    <changeSet id="1" author="you">
+    <changeSet id="001-create-app-user" author="yourname">
         <createTable tableName="app_user">
             <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true"/>
+                <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="email" type="VARCHAR(255)">
                 <constraints nullable="false" unique="true"/>
@@ -283,4 +273,19 @@ spring.jpa.show-sql=true
 
 ---
 
-Let me know if you'd like me to help you integrate this with your frontend, or if you'd like JWT token validation for protected routes (e.g., /api/goods, /api/categories, etc.)
+How to Add This
+
+1. Place it in your src/main/resources/db/changelog/changes/ folder.
+
+
+2. Add the file reference in your main changelog (e.g., master.xml):
+
+
+
+<include file="db/changelog/changes/001-create-app-user.xml"/>
+
+
+---
+
+Let me know if you want me to generate initial test data for users via Liquibase insert statements — or connect the roles dynamically across your dashboard and login flow.
+
