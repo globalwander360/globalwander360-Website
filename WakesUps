@@ -1,93 +1,94 @@
-Got it! Here's a fully upgraded, modern, colorful, and vibrant SCSS for the Goods Registration page — matching your Login/Register pages with gradient backgrounds, glassmorphism input styling, clean animations, and sleek layout.
-
-
----
-
-goods-registration.component.scss
-
 .goods-registration-container {
-  max-width: 900px;
+  max-width: 600px;
   margin: 60px auto;
-  padding: 50px 40px;
-  border-radius: 25px;
-  background: linear-gradient(135deg, #00c9ff, #92fe9d);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+  padding: 40px 30px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #6a11cb, #2575fc);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   font-family: 'Segoe UI', sans-serif;
-  color: #fff;
-  backdrop-filter: blur(10px);
+  color: #ffffff;
+  backdrop-filter: blur(8px);
   animation: fadeIn 0.8s ease-in;
 
   h2 {
-    font-size: 34px;
-    font-weight: 800;
+    font-size: 32px;
+    font-weight: bold;
     text-align: center;
-    margin-bottom: 35px;
-    color: #fff;
-    text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.3);
+    margin-bottom: 30px;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   }
 
   form {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 
     .form-group {
       display: flex;
       flex-direction: column;
 
       label {
-        margin-bottom: 8px;
+        margin-bottom: 10px;
+        font-size: 16px;
         font-weight: 600;
-        font-size: 15px;
-        color: #f0f0f0;
+        color: #f9f9f9;
       }
 
       input,
       select,
       textarea {
-        padding: 14px;
+        padding: 16px;
+        font-size: 16px;
         border-radius: 12px;
         border: none;
-        background: rgba(255, 255, 255, 0.9);
+        background: rgba(255, 255, 255, 0.95);
         color: #333;
-        font-size: 15px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        transition: box-shadow 0.3s ease, transform 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
 
         &:focus {
           outline: none;
-          box-shadow: 0 0 12px rgba(255, 255, 255, 0.7);
-          transform: translateY(-2px);
+          box-shadow: 0 0 10px #fff, 0 0 20px #9f9fff;
+        }
+      }
+
+      input[type='date'] {
+        background: linear-gradient(to right, #f9f9f9, #ffffff);
+        color: #444;
+        cursor: pointer;
+
+        &:hover {
+          background: linear-gradient(to right, #e4f1fe, #ffffff);
         }
       }
 
       textarea {
         resize: vertical;
-        min-height: 100px;
+        min-height: 120px;
       }
     }
 
     .form-actions {
-      grid-column: span 2;
       display: flex;
       justify-content: center;
       margin-top: 25px;
 
       button {
-        padding: 14px 30px;
-        font-size: 16px;
+        padding: 16px 35px;
+        font-size: 17px;
         font-weight: 700;
-        background: linear-gradient(to right, #ff758c, #ff7eb3);
-        color: white;
+        color: #ffffff;
+        background: linear-gradient(135deg, #ff4e50, #f9d423);
         border: none;
-        border-radius: 12px;
+        border-radius: 15px;
         cursor: pointer;
-        transition: all 0.3s ease-in-out;
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        transition: all 0.4s ease;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 
         &:hover {
           transform: scale(1.05);
-          background: linear-gradient(to right, #ff7eb3, #ff758c);
+          background: linear-gradient(135deg, #f9d423, #ff4e50);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
         }
       }
     }
@@ -95,23 +96,22 @@ goods-registration.component.scss
 
   .success-message,
   .error-message {
-    grid-column: span 2;
     margin-top: 20px;
-    text-align: center;
     padding: 12px;
-    border-radius: 10px;
+    text-align: center;
     font-weight: 600;
-    animation: fadeIn 0.4s ease-in;
+    border-radius: 10px;
+    animation: fadeIn 0.3s ease;
   }
 
   .success-message {
-    background: rgba(0, 255, 120, 0.2);
-    color: #eaffea;
+    background-color: rgba(0, 255, 150, 0.15);
+    color: #d0ffee;
   }
 
   .error-message {
-    background: rgba(255, 0, 0, 0.2);
-    color: #ffdede;
+    background-color: rgba(255, 50, 50, 0.15);
+    color: #ffd6d6;
   }
 }
 
@@ -125,22 +125,3 @@ goods-registration.component.scss
     transform: translateY(0);
   }
 }
-
-
----
-
-This design includes:
-
-Bright gradient background like your login page
-
-Glassmorphism input fields
-
-Animated button hover effect
-
-Responsive grid layout
-
-Shadows and highlights for a professional UI
-
-
-Would you like me to also upgrade your HTML to pair perfectly with this SCSS style?
-
