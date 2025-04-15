@@ -1,15 +1,14 @@
-Here's the complete updated backend code for Goods Registration, fully integrated with the latest Category entity as a foreign key. It includes the Entity, DTO, Mapper, Repository, Service, and Controller layers.
+Thanks! Based on your provided Goods entity structure, here's the complete updated backend code for Goods registration including the Entity, DTO, Mapper, Service, Repository, and Controller—plus the sample JSON payload for API testing.
 
 
 ---
 
-1. Goods.java (entity)
+1. Goods.java (Entity)
 
 package com.yourapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDate;
 
 @Entity
@@ -25,14 +24,31 @@ public class Goods {
     private Long id;
 
     private String name;
-
-    private String description;
-
     private Integer quantity;
 
+    @Column(name = "unit_of_measure")
+    private String unitOfMeasure;
+
+    private String location;
+
+    @Column(name = "expiry_date")
     private LocalDate expiryDate;
 
-    @ManyToOne
+    @Column(name = "acquisition_date")
+    private LocalDate acquisitionDate;
+
+    @Column(name = "minimum_stock_level")
+    private Integer minimumStockLevel;
+
+    private Double price;
+    private String supplier;
+    private String status;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private AppUser user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
 }
@@ -40,67 +56,79 @@ public class Goods {
 
 ---
 
-2. GoodsDto.java (dto)
+2. GoodsDto.java
 
 package com.yourapp.dto;
 
 import lombok.Data;
-
 import java.time.LocalDate;
 
 @Data
 public class GoodsDto {
     private Long id;
     private String name;
-    private String description;
     private Integer quantity;
+    private String unitOfMeasure;
+    private String location;
     private LocalDate expiryDate;
+    private LocalDate acquisitionDate;
+    private Integer minimumStockLevel;
+    private Double price;
+    private String supplier;
+    private String status;
+    private Long userId;
     private Long categoryId;
 }
 
 
 ---
 
-3. GoodsMapper.java (mapper)
+3. GoodsMapper.java
 
 package com.yourapp.mapper;
 
 import com.yourapp.dto.GoodsDto;
+import com.yourapp.entity.AppUser;
 import com.yourapp.entity.Category;
 import com.yourapp.entity.Goods;
-import com.yourapp.repository.CategoryRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
-@RequiredArgsConstructor
 public class GoodsMapper {
 
-    private final CategoryRepository categoryRepository;
-
-    public Goods toEntity(GoodsDto dto) {
+    public Goods toEntity(GoodsDto dto, AppUser user, Category category) {
         Goods goods = new Goods();
         goods.setId(dto.getId());
         goods.setName(dto.getName());
-        goods.setDescription(dto.getDescription());
         goods.setQuantity(dto.getQuantity());
+        goods.setUnitOfMeasure(dto.getUnitOfMeasure());
+        goods.setLocation(dto.getLocation());
         goods.setExpiryDate(dto.getExpiryDate());
-
-        Category category = categoryRepository.findById(dto.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+        goods.setAcquisitionDate(dto.getAcquisitionDate());
+        goods.setMinimumStockLevel(dto.getMinimumStockLevel());
+        goods.setPrice(dto.getPrice());
+        goods.setSupplier(dto.getSupplier());
+        goods.setStatus(dto.getStatus());
+        goods.setUser(user);
         goods.setCategory(category);
-
         return goods;
     }
 
-    public GoodsDto toDto(Goods entity) {
+    public GoodsDto toDto(Goods goods) {
         GoodsDto dto = new GoodsDto();
-        dto.setId(entity.getId());
-        dto.setName(entity.getName());
-        dto.setDescription(entity.getDescription());
-        dto.setQuantity(entity.getQuantity());
-        dto.setExpiryDate(entity.getExpiryDate());
-        dto.setCategoryId(entity.getCategory().getId());
+        dto.setId(goods.getId());
+        dto.setName(goods.getName());
+        dto.setQuantity(goods.getQuantity());
+        dto.setUnitOfMeasure(goods.getUnitOfMeasure());
+        dto.setLocation(goods.getLocation());
+        dto.setExpiryDate(goods.getExpiryDate());
+        dto.setAcquisitionDate(goods.getAcquisitionDate());
+        dto.setMinimumStockLevel(goods.getMinimumStockLevel());
+        dto.setPrice(goods.getPrice());
+        dto.setSupplier(goods.getSupplier());
+        dto.setStatus(goods.getStatus());
+        dto.setUserId(goods.getUser().getId());
+        dto.setCategoryId(goods.getCategory().getId());
         return dto;
     }
 }
@@ -108,7 +136,7 @@ public class GoodsMapper {
 
 ---
 
-4. GoodsRepository.java (repository)
+4. GoodsRepository.java
 
 package com.yourapp.repository;
 
@@ -121,13 +149,17 @@ public interface GoodsRepository extends JpaRepository<Goods, Long> {
 
 ---
 
-5. GoodsService.java (service)
+5. GoodsService.java
 
 package com.yourapp.service;
 
 import com.yourapp.dto.GoodsDto;
+import com.yourapp.entity.AppUser;
+import com.yourapp.entity.Category;
 import com.yourapp.entity.Goods;
 import com.yourapp.mapper.GoodsMapper;
+import com.yourapp.repository.AppUserRepository;
+import com.yourapp.repository.CategoryRepository;
 import com.yourapp.repository.GoodsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -140,30 +172,32 @@ import java.util.stream.Collectors;
 public class GoodsService {
 
     private final GoodsRepository goodsRepository;
-    private final GoodsMapper goodsMapper;
+    private final AppUserRepository userRepository;
+    private final CategoryRepository categoryRepository;
+    private final GoodsMapper mapper;
 
     public GoodsDto create(GoodsDto dto) {
-        Goods saved = goodsRepository.save(goodsMapper.toEntity(dto));
-        return goodsMapper.toDto(saved);
-    }
-
-    public GoodsDto update(Long id, GoodsDto dto) {
-        Goods goods = goodsRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Goods not found"));
-        dto.setId(id);
-        return goodsMapper.toDto(goodsRepository.save(goodsMapper.toEntity(dto)));
+        AppUser user = userRepository.findById(dto.getUserId()).orElseThrow();
+        Category category = categoryRepository.findById(dto.getCategoryId()).orElseThrow();
+        Goods goods = mapper.toEntity(dto, user, category);
+        return mapper.toDto(goodsRepository.save(goods));
     }
 
     public GoodsDto getById(Long id) {
-        Goods goods = goodsRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Goods not found"));
-        return goodsMapper.toDto(goods);
+        return goodsRepository.findById(id).map(mapper::toDto).orElseThrow();
     }
 
     public List<GoodsDto> getAll() {
-        return goodsRepository.findAll().stream()
-                .map(goodsMapper::toDto)
-                .collect(Collectors.toList());
+        return goodsRepository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
+    }
+
+    public GoodsDto update(Long id, GoodsDto dto) {
+        Goods existing = goodsRepository.findById(id).orElseThrow();
+        AppUser user = userRepository.findById(dto.getUserId()).orElseThrow();
+        Category category = categoryRepository.findById(dto.getCategoryId()).orElseThrow();
+        Goods updated = mapper.toEntity(dto, user, category);
+        updated.setId(id);
+        return mapper.toDto(goodsRepository.save(updated));
     }
 
     public void delete(Long id) {
@@ -174,7 +208,7 @@ public class GoodsService {
 
 ---
 
-6. GoodsController.java (controller)
+6. GoodsController.java
 
 package com.yourapp.controller;
 
@@ -190,137 +224,55 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GoodsController {
 
-    private final GoodsService service;
+    private final GoodsService goodsService;
 
     @PostMapping
     public GoodsDto create(@RequestBody GoodsDto dto) {
-        return service.create(dto);
-    }
-
-    @PutMapping("/{id}")
-    public GoodsDto update(@PathVariable Long id, @RequestBody GoodsDto dto) {
-        return service.update(id, dto);
+        return goodsService.create(dto);
     }
 
     @GetMapping("/{id}")
     public GoodsDto getById(@PathVariable Long id) {
-        return service.getById(id);
+        return goodsService.getById(id);
     }
 
     @GetMapping
     public List<GoodsDto> getAll() {
-        return service.getAll();
+        return goodsService.getAll();
+    }
+
+    @PutMapping("/{id}")
+    public GoodsDto update(@PathVariable Long id, @RequestBody GoodsDto dto) {
+        return goodsService.update(id, dto);
     }
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
-        service.delete(id);
-    }Here are 10 sample JSON request bodies you can use to register goods, assuming the categoryId values already exist in your database.
-
-Example JSONs for Goods Registration
-
-{
-  "name": "Laptop",
-  "description": "High performance laptop",
-  "quantity": 15,
-  "expiryDate": "2026-12-31",
-  "categoryId": 1
-}
-
-{
-  "name": "Apples",
-  "description": "Fresh red apples",
-  "quantity": 100,
-  "expiryDate": "2025-05-01",
-  "categoryId": 2
-}
-
-{
-  "name": "Detergent",
-  "description": "Liquid detergent for laundry",
-  "quantity": 30,
-  "expiryDate": "2027-01-15",
-  "categoryId": 3
-}
-
-{
-  "name": "Tomatoes",
-  "description": "Organic tomatoes",
-  "quantity": 80,
-  "expiryDate": "2025-04-25",
-  "categoryId": 2
-}
-
-{
-  "name": "Office Chair",
-  "description": "Ergonomic swivel chair",
-  "quantity": 10,
-  "expiryDate": "2030-01-01",
-  "categoryId": 4
-}
-
-{
-  "name": "Bananas",
-  "description": "Yellow ripe bananas",
-  "quantity": 120,
-  "expiryDate": "2025-04-20",
-  "categoryId": 2
-}
-
-{
-  "name": "Mobile Phone",
-  "description": "Latest model smartphone",
-  "quantity": 25,
-  "expiryDate": "2028-11-10",
-  "categoryId": 1
-}
-
-{
-  "name": "Shampoo",
-  "description": "Herbal anti-dandruff shampoo",
-  "quantity": 40,
-  "expiryDate": "2026-08-05",
-  "categoryId": 3
-}
-
-{
-  "name": "Carrots",
-  "description": "Farm-fresh carrots",
-  "quantity": 90,
-  "expiryDate": "2025-04-22",
-  "categoryId": 2
-}
-
-{
-  "name": "Headphones",
-  "description": "Wireless noise-canceling headphones",
-  "quantity": 18,
-  "expiryDate": "2029-12-01",
-  "categoryId": 1
-}
-
-> Replace the categoryId with actual category IDs that exist in your database (like 1 for Electronics, 2 for Vegetables, etc.)
-
-
-
-Need JSON for category creation too or sample data with invalid entries for testing validations?
-
-
+        goodsService.delete(id);
+    }
 }
 
 
 ---
 
-Let me know if you also want:
+✅ Sample JSON for Goods API
 
-Liquibase changelog for the goods table with foreign key to category
+{
+  "name": "Olive Oil",
+  "quantity": 50,
+  "unitOfMeasure": "Liters",
+  "location": "Warehouse 3A",
+  "expiryDate": "2025-12-31",
+  "acquisitionDate": "2024-11-15",
+  "minimumStockLevel": 10,
+  "price": 150.5,
+  "supplier": "Nature Supplies Co.",
+  "status": "Available",
+  "userId": 1,
+  "categoryId": 2
+}
 
-Frontend form to test this endpoint
 
-Mock JSON for goods creation requests
+---
 
-
-Just say the word!
-
-
-
+Would you like me to generate the Liquibase changelog for goods or mock insert data as well?
