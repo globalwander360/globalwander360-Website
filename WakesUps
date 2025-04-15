@@ -1,11 +1,47 @@
-Thanks! Based on your provided Goods entity structure, here's the complete updated backend code for Goods registration including the Entity, DTO, Mapper, Service, Repository, and Controller—plus the sample JSON payload for API testing.
+Here’s your complete backend structure and full source code for Goods Registration, based on:
+
+Package: org.policy
+
+Entity: User (not AppUser)
+
+DTO: GoodDTO (not GoodsDto)
+
+Service implementation inside impl folder
+
 
 
 ---
 
-1. Goods.java (Entity)
+Backend Structure
 
-package com.yourapp.entity;
+src/
+└── main/
+    └── java/
+        └── org/
+            └── policy/
+                ├── controller/
+                │   └── GoodsController.java
+                ├── dto/
+                │   └── GoodDTO.java
+                ├── entity/
+                │   ├── Goods.java
+                │   ├── Category.java
+                │   └── User.java
+                ├── mapper/
+                │   └── GoodsMapper.java
+                ├── repository/
+                │   └── GoodsRepository.java
+                ├── service/
+                │   └── GoodsService.java
+                └── service/impl/
+                    └── GoodsServiceImpl.java
+
+
+---
+
+1. Goods.java
+
+package org.policy.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -46,7 +82,7 @@ public class Goods {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private AppUser user;
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
@@ -56,15 +92,15 @@ public class Goods {
 
 ---
 
-2. GoodsDto.java
+2. GoodDTO.java
 
-package com.yourapp.dto;
+package org.policy.dto;
 
 import lombok.Data;
 import java.time.LocalDate;
 
 @Data
-public class GoodsDto {
+public class GoodDTO {
     private Long id;
     private String name;
     private Integer quantity;
@@ -85,18 +121,18 @@ public class GoodsDto {
 
 3. GoodsMapper.java
 
-package com.yourapp.mapper;
+package org.policy.mapper;
 
-import com.yourapp.dto.GoodsDto;
-import com.yourapp.entity.AppUser;
-import com.yourapp.entity.Category;
-import com.yourapp.entity.Goods;
+import org.policy.dto.GoodDTO;
+import org.policy.entity.Category;
+import org.policy.entity.Goods;
+import org.policy.entity.User;
 import org.springframework.stereotype.Component;
 
 @Component
 public class GoodsMapper {
 
-    public Goods toEntity(GoodsDto dto, AppUser user, Category category) {
+    public Goods toEntity(GoodDTO dto, User user, Category category) {
         Goods goods = new Goods();
         goods.setId(dto.getId());
         goods.setName(dto.getName());
@@ -114,8 +150,8 @@ public class GoodsMapper {
         return goods;
     }
 
-    public GoodsDto toDto(Goods goods) {
-        GoodsDto dto = new GoodsDto();
+    public GoodDTO toDto(Goods goods) {
+        GoodDTO dto = new GoodDTO();
         dto.setId(goods.getId());
         dto.setName(goods.getName());
         dto.setQuantity(goods.getQuantity());
@@ -138,9 +174,9 @@ public class GoodsMapper {
 
 4. GoodsRepository.java
 
-package com.yourapp.repository;
+package org.policy.repository;
 
-import com.yourapp.entity.Goods;
+import org.policy.entity.Goods;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface GoodsRepository extends JpaRepository<Goods, Long> {
@@ -151,17 +187,36 @@ public interface GoodsRepository extends JpaRepository<Goods, Long> {
 
 5. GoodsService.java
 
-package com.yourapp.service;
+package org.policy.service;
 
-import com.yourapp.dto.GoodsDto;
-import com.yourapp.entity.AppUser;
-import com.yourapp.entity.Category;
-import com.yourapp.entity.Goods;
-import com.yourapp.mapper.GoodsMapper;
-import com.yourapp.repository.AppUserRepository;
-import com.yourapp.repository.CategoryRepository;
-import com.yourapp.repository.GoodsRepository;
+import org.policy.dto.GoodDTO;
+import java.util.List;
+
+public interface GoodsService {
+    GoodDTO create(GoodDTO dto);
+    GoodDTO update(Long id, GoodDTO dto);
+    GoodDTO getById(Long id);
+    List<GoodDTO> getAll();
+    void delete(Long id);
+}
+
+
+---
+
+6. GoodsServiceImpl.java
+
+package org.policy.service.impl;
+
 import lombok.RequiredArgsConstructor;
+import org.policy.dto.GoodDTO;
+import org.policy.entity.Category;
+import org.policy.entity.Goods;
+import org.policy.entity.User;
+import org.policy.mapper.GoodsMapper;
+import org.policy.repository.CategoryRepository;
+import org.policy.repository.GoodsRepository;
+import org.policy.repository.UserRepository;
+import org.policy.service.GoodsService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -169,37 +224,47 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class GoodsService {
+public class GoodsServiceImpl implements GoodsService {
 
     private final GoodsRepository goodsRepository;
-    private final AppUserRepository userRepository;
+    private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
-    private final GoodsMapper mapper;
+    private final GoodsMapper goodsMapper;
 
-    public GoodsDto create(GoodsDto dto) {
-        AppUser user = userRepository.findById(dto.getUserId()).orElseThrow();
+    @Override
+    public GoodDTO create(GoodDTO dto) {
+        User user = userRepository.findById(dto.getUserId()).orElseThrow();
         Category category = categoryRepository.findById(dto.getCategoryId()).orElseThrow();
-        Goods goods = mapper.toEntity(dto, user, category);
-        return mapper.toDto(goodsRepository.save(goods));
+        Goods goods = goodsMapper.toEntity(dto, user, category);
+        return goodsMapper.toDto(goodsRepository.save(goods));
     }
 
-    public GoodsDto getById(Long id) {
-        return goodsRepository.findById(id).map(mapper::toDto).orElseThrow();
-    }
-
-    public List<GoodsDto> getAll() {
-        return goodsRepository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
-    }
-
-    public GoodsDto update(Long id, GoodsDto dto) {
+    @Override
+    public GoodDTO update(Long id, GoodDTO dto) {
         Goods existing = goodsRepository.findById(id).orElseThrow();
-        AppUser user = userRepository.findById(dto.getUserId()).orElseThrow();
+        User user = userRepository.findById(dto.getUserId()).orElseThrow();
         Category category = categoryRepository.findById(dto.getCategoryId()).orElseThrow();
-        Goods updated = mapper.toEntity(dto, user, category);
+        Goods updated = goodsMapper.toEntity(dto, user, category);
         updated.setId(id);
-        return mapper.toDto(goodsRepository.save(updated));
+        return goodsMapper.toDto(goodsRepository.save(updated));
     }
 
+    @Override
+    public GoodDTO getById(Long id) {
+        return goodsRepository.findById(id)
+                .map(goodsMapper::toDto)
+                .orElseThrow();
+    }
+
+    @Override
+    public List<GoodDTO> getAll() {
+        return goodsRepository.findAll()
+                .stream()
+                .map(goodsMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public void delete(Long id) {
         goodsRepository.deleteById(id);
     }
@@ -208,13 +273,13 @@ public class GoodsService {
 
 ---
 
-6. GoodsController.java
+7. GoodsController.java
 
-package com.yourapp.controller;
+package org.policy.controller;
 
-import com.yourapp.dto.GoodsDto;
-import com.yourapp.service.GoodsService;
 import lombok.RequiredArgsConstructor;
+import org.policy.dto.GoodDTO;
+import org.policy.service.GoodsService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -227,23 +292,23 @@ public class GoodsController {
     private final GoodsService goodsService;
 
     @PostMapping
-    public GoodsDto create(@RequestBody GoodsDto dto) {
+    public GoodDTO create(@RequestBody GoodDTO dto) {
         return goodsService.create(dto);
     }
 
+    @PutMapping("/{id}")
+    public GoodDTO update(@PathVariable Long id, @RequestBody GoodDTO dto) {
+        return goodsService.update(id, dto);
+    }
+
     @GetMapping("/{id}")
-    public GoodsDto getById(@PathVariable Long id) {
+    public GoodDTO getById(@PathVariable Long id) {
         return goodsService.getById(id);
     }
 
     @GetMapping
-    public List<GoodsDto> getAll() {
+    public List<GoodDTO> getAll() {
         return goodsService.getAll();
-    }
-
-    @PutMapping("/{id}")
-    public GoodsDto update(@PathVariable Long id, @RequestBody GoodsDto dto) {
-        return goodsService.update(id, dto);
     }
 
     @DeleteMapping("/{id}")
@@ -255,24 +320,34 @@ public class GoodsController {
 
 ---
 
-✅ Sample JSON for Goods API
+Would you like the Liquibase changelog file for the goods table or sample JSON for testing the APIs now?
+
+
+
+Here’s a sample JSON payload to use for testing your Goods Registration API (POST /api/goods):
+
+Goods Registration JSON Example
 
 {
-  "name": "Olive Oil",
-  "quantity": 50,
-  "unitOfMeasure": "Liters",
-  "location": "Warehouse 3A",
-  "expiryDate": "2025-12-31",
-  "acquisitionDate": "2024-11-15",
-  "minimumStockLevel": 10,
-  "price": 150.5,
-  "supplier": "Nature Supplies Co.",
-  "status": "Available",
+  "name": "Organic Apples",
+  "quantity": 150,
+  "unitOfMeasure": "Kilograms",
+  "location": "Cold Storage Unit 2",
+  "expiryDate": "2025-05-15",
+  "acquisitionDate": "2025-04-10",
+  "minimumStockLevel": 50,
+  "price": 120.50,
+  "supplier": "Fresh Farms Ltd.",
+  "status": "In Stock",
   "userId": 1,
-  "categoryId": 2
+  "categoryId": 1
 }
 
+> Make sure you have a User with id = 1 and a Category with id = 1 in your database. You can change userId and categoryId according to existing records in your tables.
 
----
 
-Would you like me to generate the Liquibase changelog for goods or mock insert data as well?
+
+Would you like mock data for multiple goods or categories too?
+
+
+
