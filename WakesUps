@@ -1,9 +1,166 @@
-Sure! Here's the complete updated backend code for the Category section, including the new user-accessible API for category creation:
+Thanks! I’ll now update your backend Category code based on the new fields:
 
 
 ---
 
-1. CategoryController.java
+Updated Category.java (Entity)
+
+package com.yourapp.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "category")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class Category {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    private String description;
+
+    private String storageRequirements;
+
+    private Boolean isPerishable;
+
+    private Integer shelfLife;
+}
+
+
+---
+
+Updated CategoryDto.java
+
+package com.yourapp.dto;
+
+import lombok.Data;
+
+@Data
+public class CategoryDto {
+    private Long id;
+    private String name;
+    private String description;
+    private String storageRequirements;
+    private Boolean isPerishable;
+    private Integer shelfLife;
+}
+
+
+---
+
+Updated CategoryMapper.java
+
+package com.yourapp.mapper;
+
+import com.yourapp.dto.CategoryDto;
+import com.yourapp.entity.Category;
+import org.springframework.stereotype.Component;
+
+@Component
+public class CategoryMapper {
+
+    public Category toEntity(CategoryDto dto) {
+        Category category = new Category();
+        category.setId(dto.getId());
+        category.setName(dto.getName());
+        category.setDescription(dto.getDescription());
+        category.setStorageRequirements(dto.getStorageRequirements());
+        category.setIsPerishable(dto.getIsPerishable());
+        category.setShelfLife(dto.getShelfLife());
+        return category;
+    }
+
+    public CategoryDto toDto(Category entity) {
+        CategoryDto dto = new CategoryDto();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setDescription(entity.getDescription());
+        dto.setStorageRequirements(entity.getStorageRequirements());
+        dto.setIsPerishable(entity.getIsPerishable());
+        dto.setShelfLife(entity.getShelfLife());
+        return dto;
+    }
+}
+
+
+---
+
+CategoryRepository.java
+
+package com.yourapp.repository;
+
+import com.yourapp.entity.Category;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CategoryRepository extends JpaRepository<Category, Long> {
+}
+
+
+---
+
+Updated CategoryService.java
+
+package com.yourapp.service;
+
+import com.yourapp.dto.CategoryDto;
+import com.yourapp.entity.Category;
+import com.yourapp.mapper.CategoryMapper;
+import com.yourapp.repository.CategoryRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class CategoryService {
+
+    private final CategoryRepository repository;
+    private final CategoryMapper mapper;
+
+    public CategoryDto create(CategoryDto dto) {
+        Category category = mapper.toEntity(dto);
+        return mapper.toDto(repository.save(category));
+    }
+
+    public CategoryDto update(Long id, CategoryDto dto) {
+        Category category = repository.findById(id).orElseThrow();
+        category.setName(dto.getName());
+        category.setDescription(dto.getDescription());
+        category.setStorageRequirements(dto.getStorageRequirements());
+        category.setIsPerishable(dto.getIsPerishable());
+        category.setShelfLife(dto.getShelfLife());
+        return mapper.toDto(repository.save(category));
+    }
+
+    public CategoryDto getById(Long id) {
+        return mapper.toDto(repository.findById(id).orElseThrow());
+    }
+
+    public List<CategoryDto> getAll() {
+        return repository.findAll()
+                .stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public void delete(Long id) {
+        repository.deleteById(id);
+    }
+}
+
+
+---
+
+Updated CategoryController.java
 
 package com.yourapp.controller;
 
@@ -21,15 +178,8 @@ public class CategoryController {
 
     private final CategoryService service;
 
-    // Admin or general category creation
     @PostMapping
     public CategoryDto create(@RequestBody CategoryDto dto) {
-        return service.create(dto);
-    }
-
-    // User-specific category creation
-    @PostMapping("/user")
-    public CategoryDto createCategoryByUser(@RequestBody CategoryDto dto) {
         return service.create(dto);
     }
 
@@ -57,196 +207,111 @@ public class CategoryController {
 
 ---
 
-2. CategoryService.java
+Would you like me to also provide mock data (10 JSON examples) for Category creation now?
 
-package com.yourapp.service;
 
-import com.yourapp.dto.CategoryDto;
-import com.yourapp.entity.Category;
-import com.yourapp.repository.CategoryRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
 
-@Service
-@RequiredArgsConstructor
-public class CategoryService {
 
-    private final CategoryRepository repository;
+Here are 10 mock JSON inputs for creating categories, based on your fields:
 
-    public CategoryDto create(CategoryDto dto) {
-        Category category = new Category();
-        category.setName(dto.getName());
-        return mapToDto(repository.save(category));
-    }
 
-    public CategoryDto update(Long id, CategoryDto dto) {
-        Category category = repository.findById(id).orElseThrow();
-        category.setName(dto.getName());
-        return mapToDto(repository.save(category));
-    }
+---
 
-    public CategoryDto getById(Long id) {
-        Category category = repository.findById(id).orElseThrow();
-        return mapToDto(category);
-    }
+Mock Category JSON Data
 
-    public List<CategoryDto> getAll() {
-        return repository.findAll()
-                .stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
-    }
+{
+  "id": 1,
+  "name": "Fruits",
+  "description": "Fresh and seasonal fruits",
+  "storageRequirements": "Cool and dry place",
+  "isPerishable": true,
+  "shelfLife": 7
+}
 
-    public void delete(Long id) {
-        repository.deleteById(id);
-    }
+{
+  "id": 2,
+  "name": "Electronics",
+  "description": "Electronic devices and accessories",
+  "storageRequirements": "Room temperature, dust-free",
+  "isPerishable": false,
+  "shelfLife": 365
+}
 
-    private CategoryDto mapToDto(Category category) {
-        CategoryDto dto = new CategoryDto();
-        dto.setId(category.getId());
-        dto.setName(category.getName());
-        return dto;
-    }
+{
+  "id": 3,
+  "name": "Dairy",
+  "description": "Milk and milk products",
+  "storageRequirements": "Refrigerated",
+  "isPerishable": true,
+  "shelfLife": 10
+}
+
+{
+  "id": 4,
+  "name": "Beverages",
+  "description": "Soft drinks, juices, and water",
+  "storageRequirements": "Cool place",
+  "isPerishable": true,
+  "shelfLife": 180
+}
+
+{
+  "id": 5,
+  "name": "Stationery",
+  "description": "Office and school supplies",
+  "storageRequirements": "Dry shelf",
+  "isPerishable": false,
+  "shelfLife": 720
+}
+
+{
+  "id": 6,
+  "name": "Frozen Foods",
+  "description": "Frozen vegetables and meats",
+  "storageRequirements": "Frozen at -18°C",
+  "isPerishable": true,
+  "shelfLife": 90
+}
+
+{
+  "id": 7,
+  "name": "Pharmaceuticals",
+  "description": "Medicines and health supplies",
+  "storageRequirements": "Controlled temperature",
+  "isPerishable": true,
+  "shelfLife": 365
+}
+
+{
+  "id": 8,
+  "name": "Clothing",
+  "description": "Men’s, women’s and children’s clothing",
+  "storageRequirements": "Dry and clean racks",
+  "isPerishable": false,
+  "shelfLife": 1095
+}
+
+{
+  "id": 9,
+  "name": "Bakery",
+  "description": "Breads, cakes, and pastries",
+  "storageRequirements": "Room temperature in airtight containers",
+  "isPerishable": true,
+  "shelfLife": 5
+}
+
+{
+  "id": 10,
+  "name": "Cleaning Supplies",
+  "description": "Detergents, soaps, and disinfectants",
+  "storageRequirements": "Dry and well-ventilated area",
+  "isPerishable": false,
+  "shelfLife": 730
 }
 
 
 ---
 
-3. CategoryDto.java
-
-package com.yourapp.dto;
-
-import lombok.Data;
-
-@Data
-public class CategoryDto {
-    private Long id;
-    private String name;
-}
-
-
----
-
-4. Category.java (Entity)
-
-package com.yourapp.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-
-@Entity
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Table(name = "category")
-public class Category {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String name;
-}
-
-
----
-
-5. CategoryRepository.java
-
-package com.yourapp.repository;
-
-import com.yourapp.entity.Category;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface CategoryRepository extends JpaRepository<Category, Long> {
-}
-
-
----
-
-Let me know if you need:
-
-Liquibase changelog for category table
-
-Role-based access control (for admin/user separation)
-
-Frontend integration using Angular form for users
-
-
-I can also generate mock data for categories if needed.
-
-
-
-Here’s some mock category data you can use — either for testing your API or preloading into your database (e.g., via Liquibase or manual SQL insert):
-
-
----
-
-Sample JSON Array (for frontend testing / API testing)
-
-[
-  { "name": "Electronics" },
-  { "name": "Books" },
-  { "name": "Fashion" },
-  { "name": "Home Appliances" },
-  { "name": "Sports & Fitness" },
-  { "name": "Groceries" },
-  { "name": "Beauty & Personal Care" },
-  { "name": "Automobile" },
-  { "name": "Toys" },
-  { "name": "Furniture" }
-]
-
-You can use these JSON objects with a POST request to /api/categories/user or /api/categories.
-
-
----
-
-Optional: Liquibase Changelog Mock Data (category-data.xml)
-
-<changeSet id="insert-categories" author="yourname">
-    <insert tableName="category">
-        <column name="name" value="Electronics"/>
-    </insert>
-    <insert tableName="category">
-        <column name="name" value="Books"/>
-    </insert>
-    <insert tableName="category">
-        <column name="name" value="Fashion"/>
-    </insert>
-    <insert tableName="category">
-        <column name="name" value="Home Appliances"/>
-    </insert>
-    <insert tableName="category">
-        <column name="name" value="Sports & Fitness"/>
-    </insert>
-    <insert tableName="category">
-        <column name="name" value="Groceries"/>
-    </insert>
-    <insert tableName="category">
-        <column name="name" value="Beauty & Personal Care"/>
-    </insert>
-    <insert tableName="category">
-        <column name="name" value="Automobile"/>
-    </insert>
-    <insert tableName="category">
-        <column name="name" value="Toys"/>
-    </insert>
-    <insert tableName="category">
-        <column name="name" value="Furniture"/>
-    </insert>
-</changeSet>
-
-Add this changelog to your main master.xml or db.changelog-master.xml like this:
-
-<include file="classpath:db/changelog/category-data.xml"/>
-
-
----
-
-Want me to generate the goods form dropdown using this mock data next?
+Let me know if you'd like these loaded into your database using Liquibase changelog too.
 
