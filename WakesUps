@@ -1,466 +1,110 @@
-Great! Below is how you can add a GET API to fetch all registered users in your AuthController, along with the full updated controller and service files for login, register, get by ID, and get all users.
+Here's an attractive and modern SCSS style for your Goods Registration (User side) form, using gradients, cards, subtle animations, and clean inputs to match your login/register UI style:
 
 
 ---
 
-✅ AuthController.java
-
-package com.yourapp.controller;
-
-import com.yourapp.dto.LoginRequest;
-import com.yourapp.dto.RegisterRequest;
-import com.yourapp.dto.AuthResponse;
-import com.yourapp.entity.AppUser;
-import com.yourapp.service.AuthService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/auth")
-@RequiredArgsConstructor
-public class AuthController {
-
-    private final AuthService authService;
-
-    @PostMapping("/register")
-    public AuthResponse register(@RequestBody RegisterRequest request) {
-        return authService.register(request);
-    }
-
-    @PostMapping("/login")
-    public AuthResponse login(@RequestBody LoginRequest request) {
-        return authService.login(request);
-    }
-
-    @GetMapping("/user/{id}")
-    public ResponseEntity<AppUser> getUserById(@PathVariable Long id) {
-        return authService.getUserById(id);
-    }
-
-    @GetMapping("/users")
-    public List<AppUser> getAllUsers() {
-        return authService.getAllUsers();
-    }
-}
-
-
----
-
-✅ AuthService.java
-
-package com.yourapp.service;
-
-import com.yourapp.dto.LoginRequest;
-import com.yourapp.dto.RegisterRequest;
-import com.yourapp.dto.AuthResponse;
-import com.yourapp.entity.AppUser;
-import com.yourapp.repository.AppUserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-
-@Service
-@RequiredArgsConstructor
-public class AuthService {
-
-    private final AppUserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-
-    public AuthResponse register(RegisterRequest request) {
-        AppUser user = new AppUser();
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
-        userRepository.save(user);
-        return new AuthResponse("registered", user.getRole());
-    }
-
-    public AuthResponse login(LoginRequest request) {
-        AppUser user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
-        }
-        return new AuthResponse("loggedin", user.getRole());
-    }
-
-    public ResponseEntity<AppUser> getUserById(Long id) {
-        return userRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    public List<AppUser> getAllUsers() {
-        return userRepository.findAll();
-    }
-}
-
-
----
-
-Let me know if you’d like to return DTOs instead of entities (for hiding passwords), or if you want a paginated version of the "get all users" API.
-
-
-
-
-
-
-
-
-
-
-Perfect! Here's the updated and final version of your authentication backend, tailored to integrate cleanly with your existing Inventory Management Spring Boot project (Day 1–10). This includes:
-
-Full working login & signup without JWT
-
-Secure password handling
-
-GET mapping to fetch the current user by email
-
-No use of JwtService
-
-Integrated as per your existing structure
-
-
-
----
-
-✅ Folder Structure Summary (within existing project)
-
-src/main/java/com/yourapp/
-├── controller/
-│   └── AuthController.java
-├── dto/
-│   ├── AuthResponse.java
-│   ├── LoginRequest.java
-│   └── RegisterRequest.java
-├── entity/
-│   └── AppUser.java
-├── repository/
-│   └── AppUserRepository.java
-├── security/
-│   └── SecurityConfig.java
-└── service/
-    └── AuthService.java
-
-
----
-
-✅ Full Source Code
-
-1. AppUser.java
-
-package com.yourapp.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-
-@Entity
-@Table(name = "app_user")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class AppUser {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String email;
-    private String password;
-    private String role;
-}
-
-
----
-
-2. DTOs
-
-LoginRequest.java
-
-package com.yourapp.dto;
-
-import lombok.Data;
-
-@Data
-public class LoginRequest {
-    private String email;
-    private String password;
-}
-
-RegisterRequest.java
-
-package com.yourapp.dto;
-
-import lombok.Data;
-
-@Data
-public class RegisterRequest {
-    private String email;
-    private String password;
-    private String role;
-}
-
-AuthResponse.java
-
-package com.yourapp.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-
-@Data
-@AllArgsConstructor
-public class AuthResponse {
-    private String message;
-    private String role;
-}
-
-
----
-
-3. AppUserRepository.java
-
-package com.yourapp.repository;
-
-import com.yourapp.entity.AppUser;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.Optional;
-
-public interface AppUserRepository extends JpaRepository<AppUser, Long> {
-    Optional<AppUser> findByEmail(String email);
-}
-
-
----
-
-4. AuthService.java
-
-package com.yourapp.service;
-
-import com.yourapp.dto.AuthResponse;
-import com.yourapp.dto.LoginRequest;
-import com.yourapp.dto.RegisterRequest;
-import com.yourapp.entity.AppUser;
-import com.yourapp.repository.AppUserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
-@Service
-@RequiredArgsConstructor
-public class AuthService {
-
-    private final AppUserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-
-    public AuthResponse register(RegisterRequest request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already in use");
-        }
-
-        AppUser user = new AppUser();
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
-
-        userRepository.save(user);
-
-        return new AuthResponse("User registered successfully", user.getRole());
-    }
-
-    public AuthResponse login(LoginRequest request) {
-        AppUser user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
-        }
-
-        return new AuthResponse("Login successful", user.getRole());
-    }
-
-    public AppUser getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
-}
-
-
----
-
-5. AuthController.java
-
-package com.yourapp.controller;
-
-import com.yourapp.dto.AuthResponse;
-import com.yourapp.dto.LoginRequest;
-import com.yourapp.dto.RegisterRequest;
-import com.yourapp.entity.AppUser;
-import com.yourapp.service.AuthService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
-
-@RestController
-@RequestMapping("/api/auth")
-@RequiredArgsConstructor
-@CrossOrigin
-public class AuthController {
-
-    private final AuthService authService;
-
-    @PostMapping("/register")
-    public AuthResponse register(@RequestBody RegisterRequest request) {
-        return authService.register(request);
-    }
-
-    @PostMapping("/login")
-    public AuthResponse login(@RequestBody LoginRequest request) {
-        return authService.login(request);
-    }
-
-    @GetMapping("/me")
-    public AppUser getUserByEmail(@RequestParam String email) {
-        return authService.getUserByEmail(email);
-    }
-}
-
-
----
-
-6. SecurityConfig.java
-
-package com.yourapp.security;
-
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
-
-@Configuration
-public class SecurityConfig {
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated()
-                )
-                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .build();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-}
-
-
----
-
-7. Optional: Liquibase app_user Table (if not added)
-
-<changeSet id="1" author="you">
-    <createTable tableName="app_user">
-        <column name="id" type="BIGINT" autoIncrement="true">
-            <constraints primaryKey="true"/>
-        </column>
-        <column name="email" type="VARCHAR(255)">
-            <constraints nullable="false" unique="true"/>
-        </column>
-        <column name="password" type="VARCHAR(255)">
-            <constraints nullable="false"/>
-        </column>
-        <column name="role" type="VARCHAR(50)">
-            <constraints nullable="false"/>
-        </column>
-    </createTable>
-</changeSet>
-
-
----
-
-Let me know if you'd like me to generate:
-
-Angular code to connect this login/register
-
-Error handling/validation improvements
-
-Integration with other modules (like user dashboards, warehouse roles, etc.)
-
-
-Shall we proceed to frontend integration now?
-
-[
-  {
-    "id": 1,
-    "email": "harish@example.com",
-    "password": "pass123",
-    "role": "ADMIN"
-  },
-  {
-    "id": 2,
-    "email": "dhruv@example.com",
-    "password": "pass123",
-    "role": "USER"
-  },
-  {
-    "id": 3,
-    "email": "neha@example.com",
-    "password": "pass123",
-    "role": "USER"
-  },
-  {
-    "id": 4,
-    "email": "amit@example.com",
-    "password": "pass123",
-    "role": "LOGISTICS"
-  },
-  {
-    "id": 5,
-    "email": "anglo@example.com",
-    "password": "pass123",
-    "role": "USER"
-  },
-  {
-    "id": 6,
-    "email": "kishan@example.com",
-    "password": "pass123",
-    "role": "ADMIN"
-  },
-  {
-    "id": 7,
-    "email": "nishad@example.com",
-    "password": "pass123",
-    "role": "LOGISTICS"
-  },
-  {
-    "id": 8,
-    "email": "saurabh@example.com",
-    "password": "pass123",
-    "role": "USER"
-  },
-  {
-    "id": 9,
-    "email": "ashwani@example.com",
-    "password": "pass123",
-    "role": "USER"
-  },
-  {
-    "id": 10,
-    "email": "extra@example.com",
-    "password": "pass123",
-    "role": "USER"
+goods-registration.component.scss
+
+.goods-registration-container {
+  max-width: 800px;
+  margin: 50px auto;
+  padding: 40px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #43cea2, #185a9d);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  font-family: 'Segoe UI', sans-serif;
+  color: #fff;
+
+  h2 {
+    font-size: 30px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 30px;
   }
-]
+
+  form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+
+      label {
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+
+      input,
+      select,
+      textarea {
+        padding: 12px;
+        border-radius: 10px;
+        border: none;
+        outline: none;
+        background: rgba(255, 255, 255, 0.95);
+        color: #333;
+        font-size: 15px;
+        transition: all 0.3s ease;
+
+        &:focus {
+          box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+        }
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 100px;
+      }
+    }
+
+    .form-actions {
+      grid-column: span 2;
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+
+      button {
+        padding: 12px 25px;
+        font-size: 16px;
+        font-weight: 600;
+        background: #ffffff;
+        color: #185a9d;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: 0.3s ease;
+
+        &:hover {
+          background: #eaeaea;
+        }
+      }
+    }
+  }
+
+  .success-message {
+    margin-top: 20px;
+    padding: 10px;
+    border-radius: 8px;
+    background-color: rgba(0, 255, 120, 0.2);
+    color: #eaffea;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .error-message {
+    margin-top: 20px;
+    padding: 10px;
+    border-radius: 8px;
+    background-color: rgba(255, 0, 0, 0.15);
+    color: #ffdede;
+    font-weight: 600;
+    text-align: center;
+  }
+}
+
+
+---
+
+Would you like me to also update your corresponding HTML to use this layout and structure (with labels, inputs, buttons using .form-group and .form-actions)?
