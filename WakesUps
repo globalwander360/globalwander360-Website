@@ -1,27 +1,352 @@
-# Custom app config
-database.pwd=cyberark_db_pwd
+Great! Let’s create the complete Angular frontend for the Categories section (Admin only) of your Inventory Management Module project.
 
-# Server config
-server.port=8181
-conserto.application.name=conserto
 
-# H2 (file-based) DB config
-spring.datasource.url=jdbc:h2:file:./data/storage
-spring.datasource.driverClassName=org.h2.Driver
-spring.datasource.username=sa
-spring.datasource.password=
+---
 
-# Hibernate settings
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
-spring.jpa.hibernate.ddl-auto=update
+✅ Folder Structure
 
-# H2 Console
-spring.h2.console.enabled=true
-spring.h2.console.settings.web-allow-others=true
-spring.h2.console.path=/h2-uc
+src/
+└── app/
+    ├── admin/
+    │   └── categories/
+    │       ├── category-list/
+    │       │   ├── category-list.component.ts
+    │       │   ├── category-list.component.html
+    │       │   └── category-list.component.scss
+    │       └── category-form/
+    │           ├── category-form.component.ts
+    │           ├── category-form.component.html
+    │           └── category-form.component.scss
+    ├── shared/
+    │   ├── models/
+    │   │   └── category.model.ts
+    │   └── services/
+    │       └── category.service.ts
 
-# Liquibase
-spring.liquibase.enabled=true
-spring.liquibase.drop-first=false  # IMPORTANT: set to false so it doesn’t drop data on restart!
-spring.liquibase.change-log=classpath:db/changelog/db.changelog-master.xml
+
+---
+
+✅ category.model.ts
+
+export interface Category {
+  id?: number;
+  name: string;
+  description: string;
+  storageRequirements: string;
+  isPerishable: boolean;
+  shelfLife: number;
+}
+
+
+---
+
+✅ category.service.ts
+
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { Category } from '../models/category.model';
+
+@Injectable({ providedIn: 'root' })
+export class CategoryService {
+  private baseUrl = 'http://localhost:8181/api/categories';
+
+  constructor(private http: HttpClient) {}
+
+  getAll(): Observable<Category[]> {
+    return this.http.get<Category[]>(this.baseUrl);
+  }
+
+  getById(id: number): Observable<Category> {
+    return this.http.get<Category>(`${this.baseUrl}/${id}`);
+  }
+
+  create(category: Category): Observable<Category> {
+    return this.http.post<Category>(this.baseUrl, category);
+  }
+
+  update(id: number, category: Category): Observable<Category> {
+    return this.http.put<Category>(`${this.baseUrl}/${id}`, category);
+  }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+}
+
+
+---
+
+✅ category-list.component.ts
+
+import { Component, OnInit } from '@angular/core';
+import { Category } from 'src/app/shared/models/category.model';
+import { CategoryService } from 'src/app/shared/services/category.service';
+
+@Component({
+  selector: 'app-category-list',
+  templateUrl: './category-list.component.html',
+  styleUrls: ['./category-list.component.scss']
+})
+export class CategoryListComponent implements OnInit {
+  categories: Category[] = [];
+
+  constructor(private categoryService: CategoryService) {}
+
+  ngOnInit(): void {
+    this.loadCategories();
+  }
+
+  loadCategories() {
+    this.categoryService.getAll().subscribe(data => {
+      this.categories = data;
+    });
+  }
+
+  deleteCategory(id: number) {
+    if (confirm('Are you sure you want to delete this category?')) {
+      this.categoryService.delete(id).subscribe(() => this.loadCategories());
+    }
+  }
+}
+
+
+---
+
+✅ category-list.component.html
+
+<p-table [value]="categories">
+  <ng-template pTemplate="header">
+    <tr>
+      <th>Name</th>
+      <th>Description</th>
+      <th>Perishable</th>
+      <th>Shelf Life (days)</th>
+      <th>Storage</th>
+      <th>Actions</th>
+    </tr>
+  </ng-template>
+  <ng-template pTemplate="body" let-cat>
+    <tr>
+      <td>{{ cat.name }}</td>
+      <td>{{ cat.description }}</td>
+      <td>{{ cat.isPerishable ? 'Yes' : 'No' }}</td>
+      <td>{{ cat.shelfLife }}</td>
+      <td>{{ cat.storageRequirements }}</td>
+      <td>
+        <button pButton label="Edit" [routerLink]="['/admin/categories/edit', cat.id]"></button>
+        <button pButton label="Delete" class="p-button-danger" (click)="deleteCategory(cat.id!)"></button>
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+
+---
+
+✅ category-form.component.ts
+
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Category } from 'src/app/shared/models/category.model';
+import { CategoryService } from 'src/app/shared/services/category.service';
+
+@Component({
+  selector: 'app-category-form',
+  templateUrl: './category-form.component.html',
+  styleUrls: ['./category-form.component.scss']
+})
+export class CategoryFormComponent implements OnInit {
+  categoryForm!: FormGroup;
+  isEdit = false;
+  categoryId!: number;
+
+  constructor(
+    private fb: FormBuilder,
+    private categoryService: CategoryService,
+    private route: ActivatedRoute,
+    private router: Router
+  ) {}
+
+  ngOnInit(): void {
+    this.categoryForm = this.fb.group({
+      name: ['', Validators.required],
+      description: ['', Validators.required],
+      storageRequirements: ['', Validators.required],
+      isPerishable: [false],
+      shelfLife: [0, Validators.required]
+    });
+
+    this.categoryId = +this.route.snapshot.paramMap.get('id')!;
+    if (this.categoryId) {
+      this.isEdit = true;
+      this.categoryService.getById(this.categoryId).subscribe(data => {
+        this.categoryForm.patchValue(data);
+      });
+    }
+  }
+
+  onSubmit() {
+    if (this.categoryForm.invalid) return;
+    const formValue: Category = this.categoryForm.value;
+
+    if (this.isEdit) {
+      this.categoryService.update(this.categoryId, formValue).subscribe(() => this.router.navigate(['/admin/categories']));
+    } else {
+      this.categoryService.create(formValue).subscribe(() => this.router.navigate(['/admin/categories']));
+    }
+  }
+}
+
+
+---
+
+✅ category-form.component.html
+
+<form [formGroup]="categoryForm" (ngSubmit)="onSubmit()" class="p-fluid">
+  <div class="p-field">
+    <label for="name">Name</label>
+    <input id="name" type="text" pInputText formControlName="name" />
+  </div>
+
+  <div class="p-field">
+    <label for="description">Description</label>
+    <textarea id="description" pInputTextarea formControlName="description"></textarea>
+  </div>
+
+  <div class="p-field">
+    <label for="storageRequirements">Storage Requirements</label>
+    <input id="storageRequirements" type="text" pInputText formControlName="storageRequirements" />
+  </div>
+
+  <div class="p-field-checkbox">
+    <p-checkbox formControlName="isPerishable" binary="true" inputId="isPerishable"></p-checkbox>
+    <label for="isPerishable">Is Perishable</label>
+  </div>
+
+  <div class="p-field">
+    <label for="shelfLife">Shelf Life (Days)</label>
+    <input id="shelfLife" type="number" pInputText formControlName="shelfLife" />
+  </div>
+
+  <button pButton type="submit" label="{{ isEdit ? 'Update' : 'Create' }}"></button>
+</form>
+
+
+---
+
+Would you like me to update app-routing.module.ts and app.module.ts as well for routing and declarations?
+
+Let me know and I’ll send that next!
+
+
+
+Perfect! Here's how to update app-routing.module.ts and app.module.ts for integrating the Category Management components.
+
+
+---
+
+✅ app-routing.module.ts
+
+Make sure you’ve imported your components and added routes:
+
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { CategoryListComponent } from './admin/categories/category-list/category-list.component';
+import { CategoryFormComponent } from './admin/categories/category-form/category-form.component';
+import { AuthGuard } from './auth/auth.guard';
+
+const routes: Routes = [
+  // other role-based routes...
+
+  {
+    path: 'admin/categories',
+    canActivate: [AuthGuard],
+    data: { roles: ['ADMIN'] },
+    children: [
+      { path: '', component: CategoryListComponent },
+      { path: 'create', component: CategoryFormComponent },
+      { path: 'edit/:id', component: CategoryFormComponent }
+    ]
+  }
+
+  // fallback route
+  // { path: '**', redirectTo: '' }
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule {}
+
+
+---
+
+✅ app.module.ts
+
+Make sure to import necessary modules and declare your new components:
+
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+
+// PrimeNG modules
+import { TableModule } from 'primeng/table';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { InputTextareaModule } from 'primeng/inputtextarea';
+import { CheckboxModule } from 'primeng/checkbox';
+
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+
+// Category Components
+import { CategoryListComponent } from './admin/categories/category-list/category-list.component';
+import { CategoryFormComponent } from './admin/categories/category-form/category-form.component';
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    CategoryListComponent,
+    CategoryFormComponent
+    // other components...
+  ],
+  imports: [
+    BrowserModule,
+    AppRoutingModule,
+    ReactiveFormsModule,
+    FormsModule,
+    HttpClientModule,
+    BrowserAnimationsModule,
+    TableModule,
+    ButtonModule,
+    InputTextModule,
+    InputTextareaModule,
+    CheckboxModule
+  ],
+  providers: [],
+  bootstrap: [AppComponent]
+})
+export class AppModule {}
+
+
+---
+
+✅ Done!
+
+The Category Management section is now fully wired up for the Admin role with:
+
+Role-based routing
+
+Create/Edit/Delete UI with validations
+
+Category table listing
+
+PrimeNG component usage
+
+
+Let me know if you'd like to proceed with NgRx integration or add dialog modals for create/edit!
