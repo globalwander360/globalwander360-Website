@@ -1,14 +1,16 @@
-Thanks! I’ll now update your backend Category code based on the new fields:
+Here’s the fully updated code for your Category module, reflecting the new entity structure and relationship with Goods.
 
 
 ---
 
-Updated Category.java (Entity)
+1. Updated Category.java Entity
 
 package com.yourapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.List;
 
 @Entity
 @Table(name = "category")
@@ -31,12 +33,15 @@ public class Category {
     private Boolean isPerishable;
 
     private Integer shelfLife;
+
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
+    private List<Goods> goods;
 }
 
 
 ---
 
-Updated CategoryDto.java
+2. CategoryDto.java
 
 package com.yourapp.dto;
 
@@ -55,7 +60,7 @@ public class CategoryDto {
 
 ---
 
-Updated CategoryMapper.java
+3. CategoryMapper.java
 
 package com.yourapp.mapper;
 
@@ -77,14 +82,14 @@ public class CategoryMapper {
         return category;
     }
 
-    public CategoryDto toDto(Category entity) {
+    public CategoryDto toDto(Category category) {
         CategoryDto dto = new CategoryDto();
-        dto.setId(entity.getId());
-        dto.setName(entity.getName());
-        dto.setDescription(entity.getDescription());
-        dto.setStorageRequirements(entity.getStorageRequirements());
-        dto.setIsPerishable(entity.getIsPerishable());
-        dto.setShelfLife(entity.getShelfLife());
+        dto.setId(category.getId());
+        dto.setName(category.getName());
+        dto.setDescription(category.getDescription());
+        dto.setStorageRequirements(category.getStorageRequirements());
+        dto.setIsPerishable(category.getIsPerishable());
+        dto.setShelfLife(category.getShelfLife());
         return dto;
     }
 }
@@ -92,7 +97,7 @@ public class CategoryMapper {
 
 ---
 
-CategoryRepository.java
+4. CategoryRepository.java
 
 package com.yourapp.repository;
 
@@ -105,7 +110,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
 ---
 
-Updated CategoryService.java
+5. CategoryService.java
 
 package com.yourapp.service;
 
@@ -146,8 +151,7 @@ public class CategoryService {
     }
 
     public List<CategoryDto> getAll() {
-        return repository.findAll()
-                .stream()
+        return repository.findAll().stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -160,7 +164,7 @@ public class CategoryService {
 
 ---
 
-Updated CategoryController.java
+6. CategoryController.java
 
 package com.yourapp.controller;
 
@@ -207,9 +211,7 @@ public class CategoryController {
 
 ---
 
-Would you like me to also provide mock data (10 JSON examples) for Category creation now?
-
-
+If you want the Liquibase changelog or mock data insertion for the category table, let me know and I’ll add that too.
 
 
 
