@@ -1,127 +1,252 @@
-.goods-registration-container {
-  max-width: 600px;
-  margin: 60px auto;
-  padding: 40px 30px;
-  border-radius: 20px;
-  background: linear-gradient(145deg, #6a11cb, #2575fc);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  font-family: 'Segoe UI', sans-serif;
-  color: #ffffff;
-  backdrop-filter: blur(8px);
-  animation: fadeIn 0.8s ease-in;
+Sure! Here's the complete updated backend code for the Category section, including the new user-accessible API for category creation:
 
-  h2 {
-    font-size: 32px;
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 30px;
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-  }
 
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+---
 
-    .form-group {
-      display: flex;
-      flex-direction: column;
+1. CategoryController.java
 
-      label {
-        margin-bottom: 10px;
-        font-size: 16px;
-        font-weight: 600;
-        color: #f9f9f9;
-      }
+package com.yourapp.controller;
 
-      input,
-      select,
-      textarea {
-        padding: 16px;
-        font-size: 16px;
-        border-radius: 12px;
-        border: none;
-        background: rgba(255, 255, 255, 0.95);
-        color: #333;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        transition: all 0.3s ease;
+import com.yourapp.dto.CategoryDto;
+import com.yourapp.service.CategoryService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
 
-        &:focus {
-          outline: none;
-          box-shadow: 0 0 10px #fff, 0 0 20px #9f9fff;
-        }
-      }
+import java.util.List;
 
-      input[type='date'] {
-        background: linear-gradient(to right, #f9f9f9, #ffffff);
-        color: #444;
-        cursor: pointer;
+@RestController
+@RequestMapping("/api/categories")
+@RequiredArgsConstructor
+public class CategoryController {
 
-        &:hover {
-          background: linear-gradient(to right, #e4f1fe, #ffffff);
-        }
-      }
+    private final CategoryService service;
 
-      textarea {
-        resize: vertical;
-        min-height: 120px;
-      }
+    // Admin or general category creation
+    @PostMapping
+    public CategoryDto create(@RequestBody CategoryDto dto) {
+        return service.create(dto);
     }
 
-    .form-actions {
-      display: flex;
-      justify-content: center;
-      margin-top: 25px;
-
-      button {
-        padding: 16px 35px;
-        font-size: 17px;
-        font-weight: 700;
-        color: #ffffff;
-        background: linear-gradient(135deg, #ff4e50, #f9d423);
-        border: none;
-        border-radius: 15px;
-        cursor: pointer;
-        transition: all 0.4s ease;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-
-        &:hover {
-          transform: scale(1.05);
-          background: linear-gradient(135deg, #f9d423, #ff4e50);
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
-        }
-      }
+    // User-specific category creation
+    @PostMapping("/user")
+    public CategoryDto createCategoryByUser(@RequestBody CategoryDto dto) {
+        return service.create(dto);
     }
-  }
 
-  .success-message,
-  .error-message {
-    margin-top: 20px;
-    padding: 12px;
-    text-align: center;
-    font-weight: 600;
-    border-radius: 10px;
-    animation: fadeIn 0.3s ease;
-  }
+    @PutMapping("/{id}")
+    public CategoryDto update(@PathVariable Long id, @RequestBody CategoryDto dto) {
+        return service.update(id, dto);
+    }
 
-  .success-message {
-    background-color: rgba(0, 255, 150, 0.15);
-    color: #d0ffee;
-  }
+    @GetMapping("/{id}")
+    public CategoryDto getById(@PathVariable Long id) {
+        return service.getById(id);
+    }
 
-  .error-message {
-    background-color: rgba(255, 50, 50, 0.15);
-    color: #ffd6d6;
-  }
+    @GetMapping
+    public List<CategoryDto> getAll() {
+        return service.getAll();
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        service.delete(id);
+    }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+
+---
+
+2. CategoryService.java
+
+package com.yourapp.service;
+
+import com.yourapp.dto.CategoryDto;
+import com.yourapp.entity.Category;
+import com.yourapp.repository.CategoryRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class CategoryService {
+
+    private final CategoryRepository repository;
+
+    public CategoryDto create(CategoryDto dto) {
+        Category category = new Category();
+        category.setName(dto.getName());
+        return mapToDto(repository.save(category));
+    }
+
+    public CategoryDto update(Long id, CategoryDto dto) {
+        Category category = repository.findById(id).orElseThrow();
+        category.setName(dto.getName());
+        return mapToDto(repository.save(category));
+    }
+
+    public CategoryDto getById(Long id) {
+        Category category = repository.findById(id).orElseThrow();
+        return mapToDto(category);
+    }
+
+    public List<CategoryDto> getAll() {
+        return repository.findAll()
+                .stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+    }
+
+    public void delete(Long id) {
+        repository.deleteById(id);
+    }
+
+    private CategoryDto mapToDto(Category category) {
+        CategoryDto dto = new CategoryDto();
+        dto.setId(category.getId());
+        dto.setName(category.getName());
+        return dto;
+    }
 }
+
+
+---
+
+3. CategoryDto.java
+
+package com.yourapp.dto;
+
+import lombok.Data;
+
+@Data
+public class CategoryDto {
+    private Long id;
+    private String name;
+}
+
+
+---
+
+4. Category.java (Entity)
+
+package com.yourapp.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "category")
+public class Category {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+}
+
+
+---
+
+5. CategoryRepository.java
+
+package com.yourapp.repository;
+
+import com.yourapp.entity.Category;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CategoryRepository extends JpaRepository<Category, Long> {
+}
+
+
+---
+
+Let me know if you need:
+
+Liquibase changelog for category table
+
+Role-based access control (for admin/user separation)
+
+Frontend integration using Angular form for users
+
+
+I can also generate mock data for categories if needed.
+
+
+
+Here’s some mock category data you can use — either for testing your API or preloading into your database (e.g., via Liquibase or manual SQL insert):
+
+
+---
+
+Sample JSON Array (for frontend testing / API testing)
+
+[
+  { "name": "Electronics" },
+  { "name": "Books" },
+  { "name": "Fashion" },
+  { "name": "Home Appliances" },
+  { "name": "Sports & Fitness" },
+  { "name": "Groceries" },
+  { "name": "Beauty & Personal Care" },
+  { "name": "Automobile" },
+  { "name": "Toys" },
+  { "name": "Furniture" }
+]
+
+You can use these JSON objects with a POST request to /api/categories/user or /api/categories.
+
+
+---
+
+Optional: Liquibase Changelog Mock Data (category-data.xml)
+
+<changeSet id="insert-categories" author="yourname">
+    <insert tableName="category">
+        <column name="name" value="Electronics"/>
+    </insert>
+    <insert tableName="category">
+        <column name="name" value="Books"/>
+    </insert>
+    <insert tableName="category">
+        <column name="name" value="Fashion"/>
+    </insert>
+    <insert tableName="category">
+        <column name="name" value="Home Appliances"/>
+    </insert>
+    <insert tableName="category">
+        <column name="name" value="Sports & Fitness"/>
+    </insert>
+    <insert tableName="category">
+        <column name="name" value="Groceries"/>
+    </insert>
+    <insert tableName="category">
+        <column name="name" value="Beauty & Personal Care"/>
+    </insert>
+    <insert tableName="category">
+        <column name="name" value="Automobile"/>
+    </insert>
+    <insert tableName="category">
+        <column name="name" value="Toys"/>
+    </insert>
+    <insert tableName="category">
+        <column name="name" value="Furniture"/>
+    </insert>
+</changeSet>
+
+Add this changelog to your main master.xml or db.changelog-master.xml like this:
+
+<include file="classpath:db/changelog/category-data.xml"/>
+
+
+---
+
+Want me to generate the goods form dropdown using this mock data next?
+
