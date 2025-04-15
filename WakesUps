@@ -1,24 +1,24 @@
-Here’s the fully updated code for your Category module, reflecting the new entity structure and relationship with Goods.
+Here's the complete updated backend code for Goods Registration, fully integrated with the latest Category entity as a foreign key. It includes the Entity, DTO, Mapper, Repository, Service, and Controller layers.
 
 
 ---
 
-1. Updated Category.java Entity
+1. Goods.java (entity)
 
 package com.yourapp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.List;
+import java.time.LocalDate;
 
 @Entity
-@Table(name = "category")
+@Table(name = "goods")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Category {
+public class Goods {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,68 +28,79 @@ public class Category {
 
     private String description;
 
-    private String storageRequirements;
+    private Integer quantity;
 
-    private Boolean isPerishable;
+    private LocalDate expiryDate;
 
-    private Integer shelfLife;
-
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
-    private List<Goods> goods;
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
 }
 
 
 ---
 
-2. CategoryDto.java
+2. GoodsDto.java (dto)
 
 package com.yourapp.dto;
 
 import lombok.Data;
 
+import java.time.LocalDate;
+
 @Data
-public class CategoryDto {
+public class GoodsDto {
     private Long id;
     private String name;
     private String description;
-    private String storageRequirements;
-    private Boolean isPerishable;
-    private Integer shelfLife;
+    private Integer quantity;
+    private LocalDate expiryDate;
+    private Long categoryId;
 }
 
 
 ---
 
-3. CategoryMapper.java
+3. GoodsMapper.java (mapper)
 
 package com.yourapp.mapper;
 
-import com.yourapp.dto.CategoryDto;
+import com.yourapp.dto.GoodsDto;
 import com.yourapp.entity.Category;
+import com.yourapp.entity.Goods;
+import com.yourapp.repository.CategoryRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CategoryMapper {
+@RequiredArgsConstructor
+public class GoodsMapper {
 
-    public Category toEntity(CategoryDto dto) {
-        Category category = new Category();
-        category.setId(dto.getId());
-        category.setName(dto.getName());
-        category.setDescription(dto.getDescription());
-        category.setStorageRequirements(dto.getStorageRequirements());
-        category.setIsPerishable(dto.getIsPerishable());
-        category.setShelfLife(dto.getShelfLife());
-        return category;
+    private final CategoryRepository categoryRepository;
+
+    public Goods toEntity(GoodsDto dto) {
+        Goods goods = new Goods();
+        goods.setId(dto.getId());
+        goods.setName(dto.getName());
+        goods.setDescription(dto.getDescription());
+        goods.setQuantity(dto.getQuantity());
+        goods.setExpiryDate(dto.getExpiryDate());
+
+        Category category = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+        goods.setCategory(category);
+
+        return goods;
     }
 
-    public CategoryDto toDto(Category category) {
-        CategoryDto dto = new CategoryDto();
-        dto.setId(category.getId());
-        dto.setName(category.getName());
-        dto.setDescription(category.getDescription());
-        dto.setStorageRequirements(category.getStorageRequirements());
-        dto.setIsPerishable(category.getIsPerishable());
-        dto.setShelfLife(category.getShelfLife());
+    public GoodsDto toDto(Goods entity) {
+        GoodsDto dto = new GoodsDto();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        dto.setDescription(entity.getDescription());
+        dto.setQuantity(entity.getQuantity());
+        dto.setExpiryDate(entity.getExpiryDate());
+        dto.setCategoryId(entity.getCategory().getId());
         return dto;
     }
 }
@@ -97,27 +108,27 @@ public class CategoryMapper {
 
 ---
 
-4. CategoryRepository.java
+4. GoodsRepository.java (repository)
 
 package com.yourapp.repository;
 
-import com.yourapp.entity.Category;
+import com.yourapp.entity.Goods;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface CategoryRepository extends JpaRepository<Category, Long> {
+public interface GoodsRepository extends JpaRepository<Goods, Long> {
 }
 
 
 ---
 
-5. CategoryService.java
+5. GoodsService.java (service)
 
 package com.yourapp.service;
 
-import com.yourapp.dto.CategoryDto;
-import com.yourapp.entity.Category;
-import com.yourapp.mapper.CategoryMapper;
-import com.yourapp.repository.CategoryRepository;
+import com.yourapp.dto.GoodsDto;
+import com.yourapp.entity.Goods;
+import com.yourapp.mapper.GoodsMapper;
+import com.yourapp.repository.GoodsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -126,194 +137,190 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class CategoryService {
+public class GoodsService {
 
-    private final CategoryRepository repository;
-    private final CategoryMapper mapper;
+    private final GoodsRepository goodsRepository;
+    private final GoodsMapper goodsMapper;
 
-    public CategoryDto create(CategoryDto dto) {
-        Category category = mapper.toEntity(dto);
-        return mapper.toDto(repository.save(category));
+    public GoodsDto create(GoodsDto dto) {
+        Goods saved = goodsRepository.save(goodsMapper.toEntity(dto));
+        return goodsMapper.toDto(saved);
     }
 
-    public CategoryDto update(Long id, CategoryDto dto) {
-        Category category = repository.findById(id).orElseThrow();
-        category.setName(dto.getName());
-        category.setDescription(dto.getDescription());
-        category.setStorageRequirements(dto.getStorageRequirements());
-        category.setIsPerishable(dto.getIsPerishable());
-        category.setShelfLife(dto.getShelfLife());
-        return mapper.toDto(repository.save(category));
+    public GoodsDto update(Long id, GoodsDto dto) {
+        Goods goods = goodsRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Goods not found"));
+        dto.setId(id);
+        return goodsMapper.toDto(goodsRepository.save(goodsMapper.toEntity(dto)));
     }
 
-    public CategoryDto getById(Long id) {
-        return mapper.toDto(repository.findById(id).orElseThrow());
+    public GoodsDto getById(Long id) {
+        Goods goods = goodsRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Goods not found"));
+        return goodsMapper.toDto(goods);
     }
 
-    public List<CategoryDto> getAll() {
-        return repository.findAll().stream()
-                .map(mapper::toDto)
+    public List<GoodsDto> getAll() {
+        return goodsRepository.findAll().stream()
+                .map(goodsMapper::toDto)
                 .collect(Collectors.toList());
     }
 
     public void delete(Long id) {
-        repository.deleteById(id);
+        goodsRepository.deleteById(id);
     }
 }
 
 
 ---
 
-6. CategoryController.java
+6. GoodsController.java (controller)
 
 package com.yourapp.controller;
 
-import com.yourapp.dto.CategoryDto;
-import com.yourapp.service.CategoryService;
+import com.yourapp.dto.GoodsDto;
+import com.yourapp.service.GoodsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping("/api/goods")
 @RequiredArgsConstructor
-public class CategoryController {
+public class GoodsController {
 
-    private final CategoryService service;
+    private final GoodsService service;
 
     @PostMapping
-    public CategoryDto create(@RequestBody CategoryDto dto) {
+    public GoodsDto create(@RequestBody GoodsDto dto) {
         return service.create(dto);
     }
 
     @PutMapping("/{id}")
-    public CategoryDto update(@PathVariable Long id, @RequestBody CategoryDto dto) {
+    public GoodsDto update(@PathVariable Long id, @RequestBody GoodsDto dto) {
         return service.update(id, dto);
     }
 
     @GetMapping("/{id}")
-    public CategoryDto getById(@PathVariable Long id) {
+    public GoodsDto getById(@PathVariable Long id) {
         return service.getById(id);
     }
 
     @GetMapping
-    public List<CategoryDto> getAll() {
+    public List<GoodsDto> getAll() {
         return service.getAll();
     }
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
         service.delete(id);
-    }
+    }Here are 10 sample JSON request bodies you can use to register goods, assuming the categoryId values already exist in your database.
+
+Example JSONs for Goods Registration
+
+{
+  "name": "Laptop",
+  "description": "High performance laptop",
+  "quantity": 15,
+  "expiryDate": "2026-12-31",
+  "categoryId": 1
+}
+
+{
+  "name": "Apples",
+  "description": "Fresh red apples",
+  "quantity": 100,
+  "expiryDate": "2025-05-01",
+  "categoryId": 2
+}
+
+{
+  "name": "Detergent",
+  "description": "Liquid detergent for laundry",
+  "quantity": 30,
+  "expiryDate": "2027-01-15",
+  "categoryId": 3
+}
+
+{
+  "name": "Tomatoes",
+  "description": "Organic tomatoes",
+  "quantity": 80,
+  "expiryDate": "2025-04-25",
+  "categoryId": 2
+}
+
+{
+  "name": "Office Chair",
+  "description": "Ergonomic swivel chair",
+  "quantity": 10,
+  "expiryDate": "2030-01-01",
+  "categoryId": 4
+}
+
+{
+  "name": "Bananas",
+  "description": "Yellow ripe bananas",
+  "quantity": 120,
+  "expiryDate": "2025-04-20",
+  "categoryId": 2
+}
+
+{
+  "name": "Mobile Phone",
+  "description": "Latest model smartphone",
+  "quantity": 25,
+  "expiryDate": "2028-11-10",
+  "categoryId": 1
+}
+
+{
+  "name": "Shampoo",
+  "description": "Herbal anti-dandruff shampoo",
+  "quantity": 40,
+  "expiryDate": "2026-08-05",
+  "categoryId": 3
+}
+
+{
+  "name": "Carrots",
+  "description": "Farm-fresh carrots",
+  "quantity": 90,
+  "expiryDate": "2025-04-22",
+  "categoryId": 2
+}
+
+{
+  "name": "Headphones",
+  "description": "Wireless noise-canceling headphones",
+  "quantity": 18,
+  "expiryDate": "2029-12-01",
+  "categoryId": 1
+}
+
+> Replace the categoryId with actual category IDs that exist in your database (like 1 for Electronics, 2 for Vegetables, etc.)
+
+
+
+Need JSON for category creation too or sample data with invalid entries for testing validations?
+
+
 }
 
 
 ---
 
-If you want the Liquibase changelog or mock data insertion for the category table, let me know and I’ll add that too.
+Let me know if you also want:
+
+Liquibase changelog for the goods table with foreign key to category
+
+Frontend form to test this endpoint
+
+Mock JSON for goods creation requests
 
 
-
-Here are 10 mock JSON inputs for creating categories, based on your fields:
-
-
----
-
-Mock Category JSON Data
-
-{
-  "id": 1,
-  "name": "Fruits",
-  "description": "Fresh and seasonal fruits",
-  "storageRequirements": "Cool and dry place",
-  "isPerishable": true,
-  "shelfLife": 7
-}
-
-{
-  "id": 2,
-  "name": "Electronics",
-  "description": "Electronic devices and accessories",
-  "storageRequirements": "Room temperature, dust-free",
-  "isPerishable": false,
-  "shelfLife": 365
-}
-
-{
-  "id": 3,
-  "name": "Dairy",
-  "description": "Milk and milk products",
-  "storageRequirements": "Refrigerated",
-  "isPerishable": true,
-  "shelfLife": 10
-}
-
-{
-  "id": 4,
-  "name": "Beverages",
-  "description": "Soft drinks, juices, and water",
-  "storageRequirements": "Cool place",
-  "isPerishable": true,
-  "shelfLife": 180
-}
-
-{
-  "id": 5,
-  "name": "Stationery",
-  "description": "Office and school supplies",
-  "storageRequirements": "Dry shelf",
-  "isPerishable": false,
-  "shelfLife": 720
-}
-
-{
-  "id": 6,
-  "name": "Frozen Foods",
-  "description": "Frozen vegetables and meats",
-  "storageRequirements": "Frozen at -18°C",
-  "isPerishable": true,
-  "shelfLife": 90
-}
-
-{
-  "id": 7,
-  "name": "Pharmaceuticals",
-  "description": "Medicines and health supplies",
-  "storageRequirements": "Controlled temperature",
-  "isPerishable": true,
-  "shelfLife": 365
-}
-
-{
-  "id": 8,
-  "name": "Clothing",
-  "description": "Men’s, women’s and children’s clothing",
-  "storageRequirements": "Dry and clean racks",
-  "isPerishable": false,
-  "shelfLife": 1095
-}
-
-{
-  "id": 9,
-  "name": "Bakery",
-  "description": "Breads, cakes, and pastries",
-  "storageRequirements": "Room temperature in airtight containers",
-  "isPerishable": true,
-  "shelfLife": 5
-}
-
-{
-  "id": 10,
-  "name": "Cleaning Supplies",
-  "description": "Detergents, soaps, and disinfectants",
-  "storageRequirements": "Dry and well-ventilated area",
-  "isPerishable": false,
-  "shelfLife": 730
-}
+Just say the word!
 
 
----
-
-Let me know if you'd like these loaded into your database using Liquibase changelog too.
 
