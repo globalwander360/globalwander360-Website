@@ -1,3 +1,120 @@
+Great! Below is how you can add a GET API to fetch all registered users in your AuthController, along with the full updated controller and service files for login, register, get by ID, and get all users.
+
+
+---
+
+✅ AuthController.java
+
+package com.yourapp.controller;
+
+import com.yourapp.dto.LoginRequest;
+import com.yourapp.dto.RegisterRequest;
+import com.yourapp.dto.AuthResponse;
+import com.yourapp.entity.AppUser;
+import com.yourapp.service.AuthService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthService authService;
+
+    @PostMapping("/register")
+    public AuthResponse register(@RequestBody RegisterRequest request) {
+        return authService.register(request);
+    }
+
+    @PostMapping("/login")
+    public AuthResponse login(@RequestBody LoginRequest request) {
+        return authService.login(request);
+    }
+
+    @GetMapping("/user/{id}")
+    public ResponseEntity<AppUser> getUserById(@PathVariable Long id) {
+        return authService.getUserById(id);
+    }
+
+    @GetMapping("/users")
+    public List<AppUser> getAllUsers() {
+        return authService.getAllUsers();
+    }
+}
+
+
+---
+
+✅ AuthService.java
+
+package com.yourapp.service;
+
+import com.yourapp.dto.LoginRequest;
+import com.yourapp.dto.RegisterRequest;
+import com.yourapp.dto.AuthResponse;
+import com.yourapp.entity.AppUser;
+import com.yourapp.repository.AppUserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final AppUserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public AuthResponse register(RegisterRequest request) {
+        AppUser user = new AppUser();
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(request.getRole());
+        userRepository.save(user);
+        return new AuthResponse("registered", user.getRole());
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        AppUser user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid credentials");
+        }
+        return new AuthResponse("loggedin", user.getRole());
+    }
+
+    public ResponseEntity<AppUser> getUserById(Long id) {
+        return userRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    public List<AppUser> getAllUsers() {
+        return userRepository.findAll();
+    }
+}
+
+
+---
+
+Let me know if you’d like to return DTOs instead of entities (for hiding passwords), or if you want a paginated version of the "get all users" API.
+
+
+
+
+
+
+
+
+
+
 Perfect! Here's the updated and final version of your authentication backend, tailored to integrate cleanly with your existing Inventory Management Spring Boot project (Day 1–10). This includes:
 
 Full working login & signup without JWT
