@@ -1,35 +1,43 @@
-Great! I’ll generate the complete login/signup backend source code that fits cleanly into your existing Inventory Management Spring Boot project (Day 1–10) — without using JwtService, and fully aligned with your current structure.
+Perfect! Here's the updated and final version of your authentication backend, tailored to integrate cleanly with your existing Inventory Management Spring Boot project (Day 1–10). This includes:
 
+Full working login & signup without JWT
 
----
+Secure password handling
 
-Authentication Backend Structure to Integrate
+GET mapping to fetch the current user by email
 
-src/
-└── main/
-    └── java/
-        └── com/
-            └── yourapp/
-                ├── controller/
-                │   └── AuthController.java
-                ├── dto/
-                │   ├── LoginRequest.java
-                │   ├── RegisterRequest.java
-                │   └── AuthResponse.java
-                ├── entity/
-                │   └── AppUser.java
-                ├── repository/
-                │   └── AppUserRepository.java
-                ├── security/
-                │   ├── AppUserDetailsService.java
-                │   └── SecurityConfig.java
-                └── service/
-                    └── AuthService.java
+No use of JwtService
+
+Integrated as per your existing structure
+
 
 
 ---
 
-1. AppUser.java (Entity)
+✅ Folder Structure Summary (within existing project)
+
+src/main/java/com/yourapp/
+├── controller/
+│   └── AuthController.java
+├── dto/
+│   ├── AuthResponse.java
+│   ├── LoginRequest.java
+│   └── RegisterRequest.java
+├── entity/
+│   └── AppUser.java
+├── repository/
+│   └── AppUserRepository.java
+├── security/
+│   └── SecurityConfig.java
+└── service/
+    └── AuthService.java
+
+
+---
+
+✅ Full Source Code
+
+1. AppUser.java
 
 package com.yourapp.entity;
 
@@ -37,9 +45,10 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
 @Table(name = "app_user")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AppUser {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -90,7 +99,7 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class AuthResponse {
-    private String token;
+    private String message;
     private String role;
 }
 
@@ -117,9 +126,9 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
 package com.yourapp.service;
 
+import com.yourapp.dto.AuthResponse;
 import com.yourapp.dto.LoginRequest;
 import com.yourapp.dto.RegisterRequest;
-import com.yourapp.dto.AuthResponse;
 import com.yourapp.entity.AppUser;
 import com.yourapp.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -134,21 +143,34 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
 
     public AuthResponse register(RegisterRequest request) {
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already in use");
+        }
+
         AppUser user = new AppUser();
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
+
         userRepository.save(user);
-        return new AuthResponse("registered", user.getRole());
+
+        return new AuthResponse("User registered successfully", user.getRole());
     }
 
     public AuthResponse login(LoginRequest request) {
         AppUser user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid credentials");
         }
-        return new AuthResponse("loggedin", user.getRole());
+
+        return new AuthResponse("Login successful", user.getRole());
+    }
+
+    public AppUser getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }
 
@@ -159,9 +181,10 @@ public class AuthService {
 
 package com.yourapp.controller;
 
+import com.yourapp.dto.AuthResponse;
 import com.yourapp.dto.LoginRequest;
 import com.yourapp.dto.RegisterRequest;
-import com.yourapp.dto.AuthResponse;
+import com.yourapp.entity.AppUser;
 import com.yourapp.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -169,6 +192,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@CrossOrigin
 public class AuthController {
 
     private final AuthService authService;
@@ -182,39 +206,33 @@ public class AuthController {
     public AuthResponse login(@RequestBody LoginRequest request) {
         return authService.login(request);
     }
+
+    @GetMapping("/me")
+    public AppUser getUserByEmail(@RequestParam String email) {
+        return authService.getUserByEmail(email);
+    }
 }
 
 
 ---
 
-6. AppUserDetailsService.java
-
-(Not strictly needed unless you're using full UserDetailsService for security config. Skip for now if using basic auth logic.)
-
-
----
-
-7. SecurityConfig.java
+6. SecurityConfig.java
 
 package com.yourapp.security;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
@@ -234,58 +252,98 @@ public class SecurityConfig {
 
 ---
 
-Would you like me to include the Liquibase changelog for app_user table, or should I help with connecting this with your existing modules (like categories/goods)?
+7. Optional: Liquibase app_user Table (if not added)
 
-
-Here’s the Liquibase changelog XML for the app_user table that works seamlessly with the authentication code we just integrated:
-
-
----
-
-db/changelog/changes/001-create-app-user.xml
-
-<?xml version="1.0" encoding="UTF-8"?>
-<databaseChangeLog
-    xmlns="http://www.liquibase.org/xml/ns/dbchangelog" 
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
-                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.4.xsd">
-
-    <changeSet id="001-create-app-user" author="yourname">
-        <createTable tableName="app_user">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="email" type="VARCHAR(255)">
-                <constraints nullable="false" unique="true"/>
-            </column>
-            <column name="password" type="VARCHAR(255)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="role" type="VARCHAR(50)">
-                <constraints nullable="false"/>
-            </column>
-        </createTable>
-    </changeSet>
-
-</databaseChangeLog>
+<changeSet id="1" author="you">
+    <createTable tableName="app_user">
+        <column name="id" type="BIGINT" autoIncrement="true">
+            <constraints primaryKey="true"/>
+        </column>
+        <column name="email" type="VARCHAR(255)">
+            <constraints nullable="false" unique="true"/>
+        </column>
+        <column name="password" type="VARCHAR(255)">
+            <constraints nullable="false"/>
+        </column>
+        <column name="role" type="VARCHAR(50)">
+            <constraints nullable="false"/>
+        </column>
+    </createTable>
+</changeSet>
 
 
 ---
 
-How to Add This
+Let me know if you'd like me to generate:
 
-1. Place it in your src/main/resources/db/changelog/changes/ folder.
+Angular code to connect this login/register
 
+Error handling/validation improvements
 
-2. Add the file reference in your main changelog (e.g., master.xml):
-
-
-
-<include file="db/changelog/changes/001-create-app-user.xml"/>
+Integration with other modules (like user dashboards, warehouse roles, etc.)
 
 
----
+Shall we proceed to frontend integration now?
 
-Let me know if you want me to generate initial test data for users via Liquibase insert statements — or connect the roles dynamically across your dashboard and login flow.
-
+[
+  {
+    "id": 1,
+    "email": "harish@example.com",
+    "password": "pass123",
+    "role": "ADMIN"
+  },
+  {
+    "id": 2,
+    "email": "dhruv@example.com",
+    "password": "pass123",
+    "role": "USER"
+  },
+  {
+    "id": 3,
+    "email": "neha@example.com",
+    "password": "pass123",
+    "role": "USER"
+  },
+  {
+    "id": 4,
+    "email": "amit@example.com",
+    "password": "pass123",
+    "role": "LOGISTICS"
+  },
+  {
+    "id": 5,
+    "email": "anglo@example.com",
+    "password": "pass123",
+    "role": "USER"
+  },
+  {
+    "id": 6,
+    "email": "kishan@example.com",
+    "password": "pass123",
+    "role": "ADMIN"
+  },
+  {
+    "id": 7,
+    "email": "nishad@example.com",
+    "password": "pass123",
+    "role": "LOGISTICS"
+  },
+  {
+    "id": 8,
+    "email": "saurabh@example.com",
+    "password": "pass123",
+    "role": "USER"
+  },
+  {
+    "id": 9,
+    "email": "ashwani@example.com",
+    "password": "pass123",
+    "role": "USER"
+  },
+  {
+    "id": 10,
+    "email": "extra@example.com",
+    "password": "pass123",
+    "role": "USER"
+  }
+]
