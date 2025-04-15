@@ -1,196 +1,286 @@
-Great! Let’s refine both Login and Register SCSS with:
-
-Stylized dropdown for register page
-
-Attractive buttons with gradient + hover
-
-Consistent styling for a polished UI
-
+Great! Here’s the complete Spring Boot backend structure and source code for the Login/Signup functionality, including authentication and role-based access using JWT.
 
 
 ---
 
-✅ Updated Login Page SCSS
+Folder Structure:
 
-.login-container {
-  max-width: 400px;
-  margin: 80px auto;
-  padding: 40px 30px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #6a11cb, #2575fc);
-  color: #fff;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  text-align: center;
-  font-family: 'Segoe UI', sans-serif;
+src/
+└── main/
+    └── java/
+        └── com/
+            └── inventory/
+                ├── config/
+                │   ├── JwtAuthenticationFilter.java
+                │   ├── SecurityConfig.java
+                ├── controller/
+                │   └── AuthController.java
+                ├── dto/
+                │   ├── LoginRequest.java
+                │   ├── SignupRequest.java
+                │   ├── AuthResponse.java
+                ├── entity/
+                │   └── AppUser.java
+                ├── repository/
+                │   └── UserRepository.java
+                ├── service/
+                │   ├── AuthService.java
+                │   └── JwtService.java
+                └── InventoryManagementApplication.java
+    └── resources/
+        ├── application.properties
+        └── db/changelog/
+            └── changelog-auth.xml
 
-  h2 {
-    margin-bottom: 25px;
-    font-size: 32px;
-    font-weight: 700;
-  }
 
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+---
 
-    input {
-      padding: 12px;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      outline: none;
-      background: rgba(255, 255, 255, 0.95);
-      color: #333;
-      transition: all 0.3s ease;
+1. Entity: AppUser.java
 
-      &:focus {
-        box-shadow: 0 0 10px #ffffff;
-      }
-    }
+@Entity
+@Table(name = "app_user")
+public class AppUser {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    button[type='submit'] {
-      padding: 12px;
-      font-size: 16px;
-      font-weight: 600;
-      background: linear-gradient(135deg, #ffffff, #d1e3ff);
-      color: #2575fc;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-      }
-    }
-
-    .error-message {
-      color: #ffdddd;
-      background: rgba(255, 0, 0, 0.2);
-      padding: 8px;
-      border-radius: 6px;
-    }
-  }
-
-  button:not([type='submit']) {
-    margin-top: 20px;
-    background: transparent;
-    color: #fff;
-    border: none;
-    font-size: 14px;
-    cursor: pointer;
-    text-decoration: underline;
-
-    &:hover {
-      color: #ffe;
-    }
-  }
+    private String email;
+    private String password;
+    private String role;
 }
 
 
 ---
 
-✅ Updated Register Page SCSS (with styled dropdown)
+2. DTOs
 
-.register-container {
-  max-width: 450px;
-  margin: 80px auto;
-  padding: 40px 30px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #fc5c7d, #6a82fb);
-  color: #fff;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  text-align: center;
-  font-family: 'Segoe UI', sans-serif;
+LoginRequest.java
 
-  h2 {
-    margin-bottom: 25px;
-    font-size: 32px;
-    font-weight: 700;
-  }
+public class LoginRequest {
+    private String email;
+    private String password;
+}
 
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+SignupRequest.java
 
-    input,
-    select {
-      padding: 12px;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      outline: none;
-      background: rgba(255, 255, 255, 0.95);
-      color: #333;
-      transition: box-shadow 0.3s ease;
+public class SignupRequest {
+    private String email;
+    private String password;
+    private String role;
+}
 
-      &:focus {
-        box-shadow: 0 0 10px #ffffff;
-      }
-    }
+AuthResponse.java
 
-    select {
-      appearance: none;
-      background-image: url("data:image/svg+xml;charset=UTF-8,<svg fill='gray' height='24' viewBox='0 0 24 24' width='24'><path d='M7 10l5 5 5-5z'/></svg>");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      background-size: 16px;
-      padding-right: 36px;
-    }
-
-    button[type='submit'] {
-      padding: 12px;
-      font-size: 16px;
-      font-weight: 600;
-      background: linear-gradient(135deg, #ffffff, #ffdce0);
-      color: #fc5c7d;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-      }
-    }
-
-    .error-message {
-      color: #ffdddd;
-      background: rgba(255, 0, 0, 0.2);
-      padding: 8px;
-      border-radius: 6px;
-    }
-  }
-
-  button:not([type='submit']) {
-    margin-top: 20px;
-    background: transparent;
-    color: #fff;
-    border: none;
-    font-size: 14px;
-    cursor: pointer;
-    text-decoration: underline;
-
-    &:hover {
-      color: #ffe;
-    }
-  }
+public class AuthResponse {
+    private String token;
+    private String role;
 }
 
 
 ---
 
-Let me know if you'd like me to add:
+3. Repository
 
-Responsive design for mobile
+UserRepository.java
 
-Full-page gradient background
+public interface UserRepository extends JpaRepository<AppUser, Long> {
+    Optional<AppUser> findByEmail(String email);
+}
 
-Animations or icons
+
+---
+
+4. Services
+
+JwtService.java
+
+@Service
+public class JwtService {
+    private final String SECRET = "my-secret-key";
+
+    public String generateToken(String email, String role) {
+        return Jwts.builder()
+            .setSubject(email)
+            .claim("role", role)
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + 86400000))
+            .signWith(SignatureAlgorithm.HS256, SECRET)
+            .compact();
+    }
+
+    public String extractUsername(String token) {
+        return Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token).getBody().getSubject();
+    }
+
+    public String extractRole(String token) {
+        return Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token).getBody().get("role", String.class);
+    }
+}
+
+AuthService.java
+
+@Service
+public class AuthService {
+    @Autowired private UserRepository userRepo;
+    @Autowired private JwtService jwtService;
+    @Autowired private PasswordEncoder passwordEncoder;
+
+    public AuthResponse login(LoginRequest request) {
+        AppUser user = userRepo.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        String token = jwtService.generateToken(user.getEmail(), user.getRole());
+        return new AuthResponse(token, user.getRole());
+    }
+
+    public AuthResponse signup(SignupRequest request) {
+        if (userRepo.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        AppUser user = new AppUser();
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(request.getRole());
+        userRepo.save(user);
+
+        String token = jwtService.generateToken(user.getEmail(), user.getRole());
+        return new AuthResponse(token, user.getRole());
+    }
+}
 
 
-Want to see a live preview with real sample HTML too?
+---
+
+5. Controller
+
+AuthController.java
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+    @Autowired private AuthService authService;
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@RequestBody SignupRequest request) {
+        return ResponseEntity.ok(authService.signup(request));
+    }
+}
+
+
+---
+
+6. Config
+
+JwtAuthenticationFilter.java
+
+@Component
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    @Autowired private JwtService jwtService;
+    @Autowired private UserRepository userRepo;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String token = authHeader.substring(7);
+        String email = jwtService.extractUsername(token);
+
+        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            AppUser user = userRepo.findByEmail(email).orElse(null);
+            if (user != null) {
+                UsernamePasswordAuthenticationToken auth =
+                    new UsernamePasswordAuthenticationToken(user.getEmail(), null, List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole())));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            }
+        }
+        filterChain.doFilter(request, response);
+    }
+}
+
+SecurityConfig.java
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+    @Autowired private JwtAuthenticationFilter jwtFilter;
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.csrf().disable()
+            .authorizeHttpRequests()
+            .requestMatchers("/api/auth/**").permitAll()
+            .anyRequest().authenticated()
+            .and()
+            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+
+        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+
+
+---
+
+7. application.properties
+
+server.port=8080
+spring.datasource.url=jdbc:mysql://localhost:3306/inventory
+spring.datasource.username=root
+spring.datasource.password=your_password
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+
+---
+
+8. Liquibase Changelog (changelog-auth.xml)
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet id="1" author="you">
+        <createTable tableName="app_user">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="password" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
+
+
+---
+
+Let me know if you'd like me to help you integrate this with your frontend, or if you'd like JWT token validation for protected routes (e.g., /api/goods, /api/categories, etc.)
