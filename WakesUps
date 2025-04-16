@@ -241,7 +241,6 @@ Would you like me to update app-routing.module.ts and app.module.ts as well for 
 Let me know and I’ll send that next!
 
 
-
 Perfect! Here's how to update app-routing.module.ts and app.module.ts for integrating the Category Management components.
 
 
@@ -350,3 +349,6 @@ PrimeNG component usage
 
 
 Let me know if you'd like to proceed with NgRx integration or add dialog modals for create/edit!
+
+
+
