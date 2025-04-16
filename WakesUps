@@ -1,15 +1,54 @@
-Here's the complete backend source code for the GoodsReview feature, including the goodsId reference. This covers entity, DTO, repository, service, controller, and Liquibase changes.
+Great! Based on your requirements, here's the full backend setup for the GoodsReview feature, including:
+
+Database table via Liquibase XML
+
+Java Entity
+
+DTO
+
+Mapper
+
+Repository
+
+Service + Impl
+
+Controller
+
+
+1. Liquibase XML: goods_review.xml
+
+<changeSet id="create-goods-review" author="yourname">
+    <createTable tableName="goods_review">
+        <column name="id" type="BIGINT" autoIncrement="true">
+            <constraints primaryKey="true"/>
+        </column>
+        <column name="goods_id" type="BIGINT">
+            <constraints nullable="false"/>
+        </column>
+        <column name="status" type="VARCHAR(20)">
+            <constraints nullable="false"/>
+        </column>
+        <column name="comment" type="VARCHAR(500)"/>
+        <column name="reviewed_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+
+    <addForeignKeyConstraint 
+        baseTableName="goods_review" 
+        baseColumnNames="goods_id"
+        constraintName="fk_goods_review_goods"
+        referencedTableName="goods"
+        referencedColumnNames="id"/>
+</changeSet>
 
 
 ---
 
-1. Entity: GoodsReview.java
+2. Entity: GoodsReview.java
 
 package org.policy.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -27,19 +66,20 @@ public class GoodsReview {
     @Enumerated(EnumType.STRING)
     private GoodsStatus status;
 
+    @Column(length = 500)
     private String comment;
 
-    private LocalDateTime reviewedAt;
+    private LocalDateTime reviewedAt = LocalDateTime.now();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "goods_id", nullable = false)
+    @JoinColumn(name = "goods_id")
     private Goods goods;
 }
 
 
 ---
 
-2. Enum: GoodsStatus.java
+3. Enum: GoodsStatus.java
 
 package org.policy.enums;
 
@@ -52,14 +92,12 @@ public enum GoodsStatus {
 
 ---
 
-3. DTO: GoodsReviewDto.java
+4. DTO: GoodsReviewDto.java
 
 package org.policy.dto;
 
 import lombok.Data;
 import org.policy.enums.GoodsStatus;
-
-import java.time.LocalDateTime;
 
 @Data
 public class GoodsReviewDto {
@@ -67,13 +105,45 @@ public class GoodsReviewDto {
     private Long goodsId;
     private GoodsStatus status;
     private String comment;
-    private LocalDateTime reviewedAt;
 }
 
 
 ---
 
-4. Repository: GoodsReviewRepository.java
+5. Mapper: GoodsReviewMapper.java
+
+package org.policy.mapper;
+
+import org.policy.dto.GoodsReviewDto;
+import org.policy.entity.Goods;
+import org.policy.entity.GoodsReview;
+import org.springframework.stereotype.Component;
+
+@Component
+public class GoodsReviewMapper {
+
+    public GoodsReview toEntity(GoodsReviewDto dto, Goods goods) {
+        GoodsReview review = new GoodsReview();
+        review.setStatus(dto.getStatus());
+        review.setComment(dto.getComment());
+        review.setGoods(goods);
+        return review;
+    }
+
+    public GoodsReviewDto toDto(GoodsReview review) {
+        GoodsReviewDto dto = new GoodsReviewDto();
+        dto.setId(review.getId());
+        dto.setGoodsId(review.getGoods().getId());
+        dto.setStatus(review.getStatus());
+        dto.setComment(review.getComment());
+        return dto;
+    }
+}
+
+
+---
+
+6. Repository: GoodsReviewRepository.java
 
 package org.policy.repository;
 
@@ -86,41 +156,7 @@ public interface GoodsReviewRepository extends JpaRepository<GoodsReview, Long> 
 
 ---
 
-5. Mapper: GoodsReviewMapper.java
-
-package org.policy.mapper;
-
-import org.policy.dto.GoodsReviewDto;
-import org.policy.entity.GoodsReview;
-import org.policy.entity.Goods;
-
-public class GoodsReviewMapper {
-
-    public static GoodsReview toEntity(GoodsReviewDto dto, Goods goods) {
-        GoodsReview entity = new GoodsReview();
-        entity.setId(dto.getId());
-        entity.setStatus(dto.getStatus());
-        entity.setComment(dto.getComment());
-        entity.setReviewedAt(dto.getReviewedAt());
-        entity.setGoods(goods);
-        return entity;
-    }
-
-    public static GoodsReviewDto toDto(GoodsReview entity) {
-        GoodsReviewDto dto = new GoodsReviewDto();
-        dto.setId(entity.getId());
-        dto.setGoodsId(entity.getGoods().getId());
-        dto.setStatus(entity.getStatus());
-        dto.setComment(entity.getComment());
-        dto.setReviewedAt(entity.getReviewedAt());
-        return dto;
-    }
-}
-
-
----
-
-6. Service Interface: GoodsReviewService.java
+7. Service Interface: GoodsReviewService.java
 
 package org.policy.service;
 
@@ -130,13 +166,13 @@ import java.util.List;
 
 public interface GoodsReviewService {
     GoodsReviewDto reviewGoods(GoodsReviewDto dto);
-    List<GoodsReviewDto> getAll();
+    List<GoodsReviewDto> getAllReviews();
 }
 
 
 ---
 
-7. Service Impl: GoodsReviewServiceImpl.java
+8. Service Implementation: GoodsReviewServiceImpl.java
 
 package org.policy.service.impl;
 
@@ -151,44 +187,44 @@ import org.policy.repository.GoodsReviewRepository;
 import org.policy.service.GoodsReviewService;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class GoodsReviewServiceImpl implements GoodsReviewService {
 
-    private final GoodsReviewRepository reviewRepository;
-    private final GoodsRepository goodsRepository;
+    private final GoodsReviewRepository reviewRepo;
+    private final GoodsRepository goodsRepo;
+    private final GoodsReviewMapper mapper;
 
     @Override
     public GoodsReviewDto reviewGoods(GoodsReviewDto dto) {
-        Goods goods = goodsRepository.findById(dto.getGoodsId())
-                .orElseThrow(() -> new RuntimeException("Goods not found"));
+        Goods goods = goodsRepo.findById(dto.getGoodsId())
+            .orElseThrow(() -> new NoSuchElementException("Goods not found"));
 
-        GoodsReview review = GoodsReviewMapper.toEntity(dto, goods);
-        review.setReviewedAt(LocalDateTime.now());
+        if (dto.getStatus() == GoodsStatus.REJECTED && (dto.getComment() == null || dto.getComment().isBlank())) {
+            throw new IllegalArgumentException("Comment is required when rejecting goods");
+        }
 
-        // Update goods status too
         goods.setStatus(dto.getStatus().name());
-        goodsRepository.save(goods);
+        goodsRepo.save(goods);
 
-        return GoodsReviewMapper.toDto(reviewRepository.save(review));
+        GoodsReview review = mapper.toEntity(dto, goods);
+        return mapper.toDto(reviewRepo.save(review));
     }
 
     @Override
-    public List<GoodsReviewDto> getAll() {
-        return reviewRepository.findAll().stream()
-                .map(GoodsReviewMapper::toDto)
-                .collect(Collectors.toList());
+    public List<GoodsReviewDto> getAllReviews() {
+        return reviewRepo.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
     }
 }
 
 
 ---
 
-8. Controller: GoodsReviewController.java
+9. Controller: GoodsReviewController.java
 
 package org.policy.controller;
 
@@ -200,1060 +236,31 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/goods-reviews")
+@RequestMapping("/api/reviews")
 @RequiredArgsConstructor
 public class GoodsReviewController {
 
     private final GoodsReviewService reviewService;
 
     @PostMapping
-    public GoodsReviewDto reviewGoods(@RequestBody GoodsReviewDto dto) {
+    public GoodsReviewDto review(@RequestBody GoodsReviewDto dto) {
         return reviewService.reviewGoods(dto);
     }
 
     @GetMapping
     public List<GoodsReviewDto> getAll() {
-        return reviewService.getAll();
+        return reviewService.getAllReviews();
     }
 }
 
 
 ---
 
-9. Liquibase XML: db.changelog-<timestamp>-goods-review.xml
+Optional: Goods Entity Update (if needed)
 
-<changeSet id="create-goods-review" author="yourname">
-    <createTable tableName="goods_review">
-        <column name="id" type="BIGINT" autoIncrement="true">
-            <constraints primaryKey="true" nullable="false"/>
-        </column>
-        <column name="status" type="VARCHAR(20)"/>
-        <column name="comment" type="VARCHAR(500)"/>
-        <column name="reviewed_at" type="TIMESTAMP"/>
-        <column name="goods_id" type="BIGINT">
-            <constraints nullable="false" foreignKeyName="fk_goods_review_goods"
-                         referencedTableName="goods" referencedColumnNames="id"/>
-        </column>
-    </createTable>
-</changeSet>
+Make sure your Goods entity has a status field like this:
 
+@Column(length = 20)
+private String status;
 
----
-
-10. Sample JSON for Testing the API
-
-{
-  "goodsId": 1,
-  "status": "REJECTED",
-  "comment": "Damaged packaging"
-}
-
-Or
-
-{
-  "goodsId": 2,
-  "status": "APPROVED",
-  "comment": ""
-}
-
-
----
-
-Let me know if you want the frontend code for Goods Review as well.
-
-
-
-
-Yes, to fully support GoodsReview functionality, especially status tracking and linking to reviews, you need to update your Goods entity slightly. Here's the complete updated Goods.java file with the required changes:
-
-
----
-
-Updated Goods.java
-
-package org.policy.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-import org.policy.enums.GoodsStatus;
-
-import java.time.LocalDate;
-import java.util.List;
-
-@Entity
-@Table(name = "goods")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class Goods {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String name;
-
-    private Integer quantity;
-
-    @Column(name = "unit_of_measure")
-    private String unitOfMeasure;
-
-    private String location;
-
-    @Column(name = "expiry_date")
-    private LocalDate expiryDate;
-
-    @Column(name = "acquisition_date")
-    private LocalDate acquisitionDate;
-
-    @Column(name = "minimum_stock_level")
-    private Integer minimumStockLevel;
-
-    private Double price;
-
-    private String supplier;
-
-    @Enumerated(EnumType.STRING)
-    private GoodsStatus status;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category;
-
-    // Optional if you want a back-reference (not required unless bidirectional)
-    @OneToMany(mappedBy = "goods", cascade = CascadeType.ALL)
-    private List<GoodsReview> reviews;
-}
-
-
----
-
-Explanation of Changes:
-
-1. Enum GoodsStatus Used:
-
-@Enumerated(EnumType.STRING)
-private GoodsStatus status;
-
-Replaces the String status; to enforce enum typing.
-
-
-
-2. Back-reference to GoodsReview (Optional):
-
-@OneToMany(mappedBy = "goods", cascade = CascadeType.ALL)
-private List<GoodsReview> reviews;
-
-Only needed if you want to see all reviews linked to a good from the Goods side.
-
-
-
-3. Field Fixes (Optional Corrections):
-
-unitOfMeasure spelling fixed.
-
-Annotation formatting cleaned up for better readability and consistency.
-
-
-
-
-
----
-
-Let me know if you want the Liquibase changes for adding the status column using Enum, or if you need to reflect this on the frontend as well.
-
-
-
-Here are the 10 JSON examples for each controller:
-
-
----
-
-1. GoodsController – JSON Inputs
-
-[
-  {
-    "name": "Laptop",
-    "quantity": 10,
-    "unitOfMeasure": "pieces",
-    "location": "Warehouse A",
-    "expiryDate": null,
-    "acquisitionDate": "2025-04-01",
-    "minimumStockLevel": 2,
-    "price": 85000.0,
-    "supplier": "Dell India",
-    "status": "PENDING",
-    "userId": 1,
-    "categoryId": 1
-  },
-  {
-    "name": "Tomatoes",
-    "quantity": 100,
-    "unitOfMeasure": "kg",
-    "location": "Cold Storage",
-    "expiryDate": "2025-04-20",
-    "acquisitionDate": "2025-04-10",
-    "minimumStockLevel": 20,
-    "price": 40.0,
-    "supplier": "FreshFarm",
-    "status": "PENDING",
-    "userId": 2,
-    "categoryId": 2
-  },
-  {
-    "name": "Printer Ink",
-    "quantity": 30,
-    "unitOfMeasure": "bottles",
-    "location": "Storage Room",
-    "expiryDate": null,
-    "acquisitionDate": "2025-03-28",
-    "minimumStockLevel": 5,
-    "price": 300.0,
-    "supplier": "HP Supplies",
-    "status": "PENDING",
-    "userId": 3,
-    "categoryId": 3
-  },
-  {
-    "name": "Milk",
-    "quantity": 50,
-    "unitOfMeasure": "liters",
-    "location": "Cold Storage",
-    "expiryDate": "2025-04-16",
-    "acquisitionDate": "2025-04-10",
-    "minimumStockLevel": 10,
-    "price": 55.0,
-    "supplier": "DairyBest",
-    "status": "PENDING",
-    "userId": 4,
-    "categoryId": 4
-  },
-  {
-    "name": "LED Lights",
-    "quantity": 60,
-    "unitOfMeasure": "units",
-    "location": "Warehouse B",
-    "expiryDate": null,
-    "acquisitionDate": "2025-03-25",
-    "minimumStockLevel": 10,
-    "price": 120.0,
-    "supplier": "Syska",
-    "status": "PENDING",
-    "userId": 5,
-    "categoryId": 5
-  },
-  {
-    "name": "Bananas",
-    "quantity": 200,
-    "unitOfMeasure": "kg",
-    "location": "Cold Storage",
-    "expiryDate": "2025-04-15",
-    "acquisitionDate": "2025-04-10",
-    "minimumStockLevel": 25,
-    "price": 30.0,
-    "supplier": "FruitCart",
-    "status": "PENDING",
-    "userId": 6,
-    "categoryId": 2
-  },
-  {
-    "name": "Chairs",
-    "quantity": 15,
-    "unitOfMeasure": "pieces",
-    "location": "Warehouse C",
-    "expiryDate": null,
-    "acquisitionDate": "2025-04-05",
-    "minimumStockLevel": 3,
-    "price": 750.0,
-    "supplier": "UrbanWood",
-    "status": "PENDING",
-    "userId": 7,
-    "categoryId": 6
-  },
-  {
-    "name": "Wheat",
-    "quantity": 500,
-    "unitOfMeasure": "kg",
-    "location": "Main Warehouse",
-    "expiryDate": "2025-12-01",
-    "acquisitionDate": "2025-04-09",
-    "minimumStockLevel": 100,
-    "price": 28.0,
-    "supplier": "AgroMart",
-    "status": "PENDING",
-    "userId": 8,
-    "categoryId": 7
-  },
-  {
-    "name": "Coolers",
-    "quantity": 12,
-    "unitOfMeasure": "units",
-    "location": "Warehouse D",
-    "expiryDate": null,
-    "acquisitionDate": "2025-04-07",
-    "minimumStockLevel": 2,
-    "price": 5000.0,
-    "supplier": "Voltas",
-    "status": "PENDING",
-    "userId": 9,
-    "categoryId": 8
-  },
-  {
-    "name": "Yogurt",
-    "quantity": 60,
-    "unitOfMeasure": "packs",
-    "location": "Refrigerator",
-    "expiryDate": "2025-04-18",
-    "acquisitionDate": "2025-04-11",
-    "minimumStockLevel": 10,
-    "price": 25.0,
-    "supplier": "MilkMagic",
-    "status": "PENDING",
-    "userId": 10,
-    "categoryId": 4
-  }
-]
-
-
----
-
-Would you like me to continue with CategoryController JSONs next?
-
-
-
-Here are the 10 JSON examples for the CategoryController:
-
-
----
-
-2. CategoryController – JSON Inputs
-
-[
-  {
-    "name": "Electronics",
-    "description": "Electronic items including gadgets and appliances.",
-    "storageRequirements": "Cool and dry place",
-    "isPerishable": false,
-    "shelfLife": null
-  },
-  {
-    "name": "Fresh Vegetables",
-    "description": "Green and leafy vegetables",
-    "storageRequirements": "Refrigerated",
-    "isPerishable": true,
-    "shelfLife": 7
-  },
-  {
-    "name": "Stationery",
-    "description": "Office and school supplies",
-    "storageRequirements": "No special requirements",
-    "isPerishable": false,
-    "shelfLife": null
-  },
-  {
-    "name": "Dairy Products",
-    "description": "Milk, Cheese, Yogurt etc.",
-    "storageRequirements": "Store below 4°C",
-    "isPerishable": true,
-    "shelfLife": 10
-  },
-  {
-    "name": "Furniture",
-    "description": "Tables, chairs, and office furniture",
-    "storageRequirements": "Dry and ventilated area",
-    "isPerishable": false,
-    "shelfLife": null
-  },
-  {
-    "name": "Fruits",
-    "description": "Fresh seasonal fruits",
-    "storageRequirements": "Keep refrigerated",
-    "isPerishable": true,
-    "shelfLife": 5
-  },
-  {
-    "name": "Grains",
-    "description": "Wheat, Rice, and other cereals",
-    "storageRequirements": "Cool and dry place",
-    "isPerishable": false,
-    "shelfLife": null
-  },
-  {
-    "name": "Clothing",
-    "description": "Wearable garments",
-    "storageRequirements": "No special requirements",
-    "isPerishable": false,
-    "shelfLife": null
-  },
-  {
-    "name": "Bakery Items",
-    "description": "Bread, Cakes, and Pastries",
-    "storageRequirements": "Store in fridge",
-    "isPerishable": true,
-    "shelfLife": 3
-  },
-  {
-    "name": "Cleaning Supplies",
-    "description": "Detergents, soaps, and disinfectants",
-    "storageRequirements": "Away from direct sunlight",
-    "isPerishable": false,
-    "shelfLife": null
-  }
-]
-
-
----
-
-Shall I continue with Authentication JSONs next?
-
-
-
-
-
-Here are 10 JSON examples for the AuthenticationController — both for signup (registration) and login:
-
-
----
-
-3. AuthenticationController – Signup JSON
-
-Endpoint: POST /api/auth/signup
-
-[
-  {
-    "username": "harish",
-    "email": "harish@example.com",
-    "password": "Harish@123",
-    "role": "USER"
-  },
-  {
-    "username": "dhruv",
-    "email": "dhruv@example.com",
-    "password": "Dhruv@123",
-    "role": "USER"
-  },
-  {
-    "username": "neha",
-    "email": "neha@example.com",
-    "password": "Neha@123",
-    "role": "ADMIN"
-  },
-  {
-    "username": "amit",
-    "email": "amit@example.com",
-    "password": "Amit@123",
-    "role": "USER"
-  },
-  {
-    "username": "anglo",
-    "email": "anglo@example.com",
-    "password": "Anglo@123",
-    "role": "LOGISTICS"
-  },
-  {
-    "username": "kishan",
-    "email": "kishan@example.com",
-    "password": "Kishan@123",
-    "role": "USER"
-  },
-  {
-    "username": "nishad",
-    "email": "nishad@example.com",
-    "password": "Nishad@123",
-    "role": "LOGISTICS"
-  },
-  {
-    "username": "saurabh",
-    "email": "saurabh@example.com",
-    "password": "Saurabh@123",
-    "role": "ADMIN"
-  },
-  {
-    "username": "ashwani",
-    "email": "ashwani@example.com",
-    "password": "Ashwani@123",
-    "role": "USER"
-  },
-  {
-    "username": "meera",
-    "email": "meera@example.com",
-    "password": "Meera@123",
-    "role": "USER"
-  }
-]
-
-
----
-
-AuthenticationController – Login JSON
-
-Endpoint: POST /api/auth/login
-
-[
-  {
-    "email": "harish@example.com",
-    "password": "Harish@123"
-  },
-  {
-    "email": "dhruv@example.com",
-    "password": "Dhruv@123"
-  },
-  {
-    "email": "neha@example.com",
-    "password": "Neha@123"
-  },
-  {
-    "email": "amit@example.com",
-    "password": "Amit@123"
-  },
-  {
-    "email": "anglo@example.com",
-    "password": "Anglo@123"
-  },
-  {
-    "email": "kishan@example.com",
-    "password": "Kishan@123"
-  },
-  {
-    "email": "nishad@example.com",
-    "password": "Nishad@123"
-  },
-  {
-    "email": "saurabh@example.com",
-    "password": "Saurabh@123"
-  },
-  {
-    "email": "ashwani@example.com",
-    "password": "Ashwani@123"
-  },
-  {
-    "email": "meera@example.com",
-    "password": "Meera@123"
-  }
-]
-
-
----
-
-Would you like me to continue with GoodsController JSONs next?
-
-
-
-Here are 10 JSON examples for the AuthenticationController — both for signup (registration) and login:
-
-
----
-
-3. AuthenticationController – Signup JSON
-
-Endpoint: POST /api/auth/signup
-
-[
-  {
-    "username": "harish",
-    "email": "harish@example.com",
-    "password": "Harish@123",
-    "role": "USER"
-  },
-  {
-    "username": "dhruv",
-    "email": "dhruv@example.com",
-    "password": "Dhruv@123",
-    "role": "USER"
-  },
-  {
-    "username": "neha",
-    "email": "neha@example.com",
-    "password": "Neha@123",
-    "role": "ADMIN"
-  },
-  {
-    "username": "amit",
-    "email": "amit@example.com",
-    "password": "Amit@123",
-    "role": "USER"
-  },
-  {
-    "username": "anglo",
-    "email": "anglo@example.com",
-    "password": "Anglo@123",
-    "role": "LOGISTICS"
-  },
-  {
-    "username": "kishan",
-    "email": "kishan@example.com",
-    "password": "Kishan@123",
-    "role": "USER"
-  },
-  {
-    "username": "nishad",
-    "email": "nishad@example.com",
-    "password": "Nishad@123",
-    "role": "LOGISTICS"
-  },
-  {
-    "username": "saurabh",
-    "email": "saurabh@example.com",
-    "password": "Saurabh@123",
-    "role": "ADMIN"
-  },
-  {
-    "username": "ashwani",
-    "email": "ashwani@example.com",
-    "password": "Ashwani@123",
-    "role": "USER"
-  },
-  {
-    "username": "meera",
-    "email": "meera@example.com",
-    "password": "Meera@123",
-    "role": "USER"
-  }
-]
-
-
----
-
-AuthenticationController – Login JSON
-
-Endpoint: POST /api/auth/login
-
-[
-  {
-    "email": "harish@example.com",
-    "password": "Harish@123"
-  },
-  {
-    "email": "dhruv@example.com",
-    "password": "Dhruv@123"
-  },
-  {
-    "email": "neha@example.com",
-    "password": "Neha@123"
-  },
-  {
-    "email": "amit@example.com",
-    "password": "Amit@123"
-  },
-  {
-    "email": "anglo@example.com",
-    "password": "Anglo@123"
-  },
-  {
-    "email": "kishan@example.com",
-    "password": "Kishan@123"
-  },
-  {
-    "email": "nishad@example.com",
-    "password": "Nishad@123"
-  },
-  {
-    "email": "saurabh@example.com",
-    "password": "Saurabh@123"
-  },
-  {
-    "email": "ashwani@example.com",
-    "password": "Ashwani@123"
-  },
-  {
-    "email": "meera@example.com",
-    "password": "Meera@123"
-  }
-]
-
-
----
-
-Would you like me to continue with GoodsController JSONs next?
-
-
-
-
-
-
-Here are 10 JSON examples for the GoodsController:
-
-
----
-
-1. GoodsController – Create Good (POST)
-
-Endpoint: POST /api/goods
-
-[
-  {
-    "name": "Laptop",
-    "quantity": 50,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 1",
-    "expiryDate": "2025-12-31",
-    "acquisitionDate": "2024-04-10",
-    "minimumStockLevel": 10,
-    "price": 800.00,
-    "supplier": "Tech Supplies",
-    "status": "PENDING",
-    "categoryId": 1
-  },
-  {
-    "name": "Smartphone",
-    "quantity": 200,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 2",
-    "expiryDate": "2025-11-30",
-    "acquisitionDate": "2024-04-12",
-    "minimumStockLevel": 50,
-    "price": 500.00,
-    "supplier": "Mobile Hub",
-    "status": "PENDING",
-    "categoryId": 2
-  },
-  {
-    "name": "Refrigerator",
-    "quantity": 20,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 3",
-    "expiryDate": "2025-06-15",
-    "acquisitionDate": "2024-03-25",
-    "minimumStockLevel": 5,
-    "price": 1500.00,
-    "supplier": "Home Appliances",
-    "status": "PENDING",
-    "categoryId": 3
-  },
-  {
-    "name": "Washing Machine",
-    "quantity": 30,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 1",
-    "expiryDate": "2025-07-30",
-    "acquisitionDate": "2024-03-29",
-    "minimumStockLevel": 5,
-    "price": 700.00,
-    "supplier": "Laundry Gear",
-    "status": "PENDING",
-    "categoryId": 3
-  },
-  {
-    "name": "Microwave Oven",
-    "quantity": 100,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 2",
-    "expiryDate": "2025-05-10",
-    "acquisitionDate": "2024-04-05",
-    "minimumStockLevel": 30,
-    "price": 250.00,
-    "supplier": "Kitchen Solutions",
-    "status": "PENDING",
-    "categoryId": 4
-  },
-  {
-    "name": "Air Conditioner",
-    "quantity": 10,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 1",
-    "expiryDate": "2025-08-25",
-    "acquisitionDate": "2024-04-07",
-    "minimumStockLevel": 3,
-    "price": 1200.00,
-    "supplier": "Cooler Supplies",
-    "status": "PENDING",
-    "categoryId": 3
-  },
-  {
-    "name": "LED TV",
-    "quantity": 15,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 3",
-    "expiryDate": "2025-12-01",
-    "acquisitionDate": "2024-04-01",
-    "minimumStockLevel": 3,
-    "price": 900.00,
-    "supplier": "Home Entertainment",
-    "status": "PENDING",
-    "categoryId": 5
-  },
-  {
-    "name": "Laptop Bag",
-    "quantity": 150,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 2",
-    "expiryDate": "2025-12-20",
-    "acquisitionDate": "2024-04-15",
-    "minimumStockLevel": 20,
-    "price": 50.00,
-    "supplier": "Accessories",
-    "status": "PENDING",
-    "categoryId": 6
-  },
-  {
-    "name": "Desk Chair",
-    "quantity": 100,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 1",
-    "expiryDate": "2025-09-30",
-    "acquisitionDate": "2024-03-30",
-    "minimumStockLevel": 25,
-    "price": 150.00,
-    "supplier": "Office Supplies",
-    "status": "PENDING",
-    "categoryId": 7
-  },
-  {
-    "name": "Office Desk",
-    "quantity": 50,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 3",
-    "expiryDate": "2025-10-01",
-    "acquisitionDate": "2024-04-08",
-    "minimumStockLevel": 10,
-    "price": 300.00,
-    "supplier": "Furniture Store",
-    "status": "PENDING",
-    "categoryId": 7
-  }
-]
-
-
----
-
-2. GoodsController – Get Goods by ID (GET)
-
-Endpoint: GET /api/goods/{id}
-
-{
-  "id": 1,
-  "name": "Laptop",
-  "quantity": 50,
-  "unitOfMeasure": "Piece",
-  "location": "Warehouse 1",
-  "expiryDate": "2025-12-31",
-  "acquisitionDate": "2024-04-10",
-  "minimumStockLevel": 10,
-  "price": 800.00,
-  "supplier": "Tech Supplies",
-  "status": "PENDING",
-  "categoryId": 1
-}
-
-
----
-
-3. GoodsController – Update Good (PUT)
-
-Endpoint: PUT /api/goods/{id}
-
-{
-  "id": 1,
-  "name": "Laptop",
-  "quantity": 60,
-  "unitOfMeasure": "Piece",
-  "location": "Warehouse 1",
-  "expiryDate": "2025-12-31",
-  "acquisitionDate": "2024-04-10",
-  "minimumStockLevel": 15,
-  "price": 850.00,
-  "supplier": "Tech Supplies",
-  "status": "PENDING",
-  "categoryId": 1
-}
-
-
----
-
-4. GoodsController – Delete Good (DELETE)
-
-Endpoint: DELETE /api/goods/{id}
-
-{
-  "message": "Good with ID 1 has been successfully deleted."
-}
-
-
----
-
-5. GoodsController – List All Goods (GET)
-
-Endpoint: GET /api/goods
-
-[
-  {
-    "id": 1,
-    "name": "Laptop",
-    "quantity": 50,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 1",
-    "expiryDate": "2025-12-31",
-    "acquisitionDate": "2024-04-10",
-    "minimumStockLevel": 10,
-    "price": 800.00,
-    "supplier": "Tech Supplies",
-    "status": "PENDING",
-    "categoryId": 1
-  },
-  {
-    "id": 2,
-    "name": "Smartphone",
-    "quantity": 200,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 2",
-    "expiryDate": "2025-11-30",
-    "acquisitionDate": "2024-04-12",
-    "minimumStockLevel": 50,
-    "price": 500.00,
-    "supplier": "Mobile Hub",
-    "status": "PENDING",
-    "categoryId": 2
-  },
-  {
-    "id": 3,
-    "name": "Refrigerator",
-    "quantity": 20,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 3",
-    "expiryDate": "2025-06-15",
-    "acquisitionDate": "2024-03-25",
-    "minimumStockLevel": 5,
-    "price": 1500.00,
-    "supplier": "Home Appliances",
-    "status": "PENDING",
-    "categoryId": 3
-  },
-  {
-    "id": 4,
-    "name": "Washing Machine",
-    "quantity": 30,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 1",
-    "expiryDate": "2025-07-30",
-    "acquisitionDate": "2024-03-29",
-    "minimumStockLevel": 5,
-    "price": 700.00,
-    "supplier": "Laundry Gear",
-    "status": "PENDING",
-    "categoryId": 3
-  }
-]
-
-
----
-
-6. GoodsController – List Goods by Category (GET)
-
-Endpoint: GET /api/goods/category/{categoryId}
-
-[
-  {
-    "id": 1,
-    "name": "Laptop",
-    "quantity": 50,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 1",
-    "expiryDate": "2025-12-31",
-    "acquisitionDate": "2024-04-10",
-    "minimumStockLevel": 10,
-    "price": 800.00,
-    "supplier": "Tech Supplies",
-    "status": "PENDING",
-    "categoryId": 1
-  },
-  {
-    "id": 2,
-    "name": "Smartphone",
-    "quantity": 200,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 2",
-    "expiryDate": "2025-11-30",
-    "acquisitionDate": "2024-04-12",
-    "minimumStockLevel": 50,
-    "price": 500.00,
-    "supplier": "Mobile Hub",
-    "status": "PENDING",
-    "categoryId": 2
-  }
-]
-
-
----
-
-7. GoodsController – Status Change (APPROVED)
-
-Endpoint: PUT /api/goods/status/{id}
-
-{
-  "id": 1,
-  "status": "APPROVED",
-  "approvedBy": "admin"
-}
-
-
----
-
-8. GoodsController – Status Change (REJECTED)
-
-Endpoint: PUT /api/goods/status/{id}
-
-{
-  "id": 2,
-  "status": "REJECTED",
-  "rejectionReason": "Damaged"
-}
-
-
----
-
-9. GoodsController – Bulk Update (PUT)
-
-Endpoint: PUT /api/goods/bulk
-
-{
-  "goods": [
-    {
-      "id": 1,
-      "quantity": 70,
-      "status": "PENDING"
-    },
-    {
-      "id": 2,
-      "quantity": 150,
-      "status": "APPROVED"
-    }
-  ]
-}
-
-
----
-
-10. GoodsController – Get Goods by Supplier (GET)
-
-Endpoint: GET /api/goods/supplier/{supplier}
-
-[
-  {
-    "id": 1,
-    "name": "Laptop",
-    "quantity": 50,
-    "unitOfMeasure": "Piece",
-    "location": "Warehouse 1",
-    "expiryDate": "2025-12-31",
-    "acquisitionDate": "2024-04-10",
-    "minimumStockLevel": 10,
-    "price": 800.00,
-    "supplier": "Tech Supplies",
-    "status": "PENDING",
-    "categoryId": 1
-  }
-]
-
-
----
-
-These are the JSON examples for GoodsController. Would you like me to continue with CategoryController JSONs next?
-
-
-
-
+Let me know if you want the Angular frontend for this (Logistics Coordinator: review UI).
