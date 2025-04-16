@@ -1,55 +1,25 @@
-Great! Based on your requirements, here's the full backend setup for the GoodsReview feature, including:
+Here’s the complete working backend implementation of the GoodsReview feature with approval/rejection logic and validation, including:
 
-Database table via Liquibase XML
+1. GoodsStatus Enum
 
-Java Entity
+package org.policy.enums;
 
-DTO
-
-Mapper
-
-Repository
-
-Service + Impl
-
-Controller
-
-
-1. Liquibase XML: goods_review.xml
-
-<changeSet id="create-goods-review" author="yourname">
-    <createTable tableName="goods_review">
-        <column name="id" type="BIGINT" autoIncrement="true">
-            <constraints primaryKey="true"/>
-        </column>
-        <column name="goods_id" type="BIGINT">
-            <constraints nullable="false"/>
-        </column>
-        <column name="status" type="VARCHAR(20)">
-            <constraints nullable="false"/>
-        </column>
-        <column name="comment" type="VARCHAR(500)"/>
-        <column name="reviewed_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
-    </createTable>
-
-    <addForeignKeyConstraint 
-        baseTableName="goods_review" 
-        baseColumnNames="goods_id"
-        constraintName="fk_goods_review_goods"
-        referencedTableName="goods"
-        referencedColumnNames="id"/>
-</changeSet>
+public enum GoodsStatus {
+    PENDING,
+    APPROVED,
+    REJECTED
+}
 
 
 ---
 
-2. Entity: GoodsReview.java
+2. GoodsReview Entity
 
 package org.policy.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+import org.policy.enums.GoodsStatus;
 
 @Entity
 @Table(name = "goods_review")
@@ -66,84 +36,42 @@ public class GoodsReview {
     @Enumerated(EnumType.STRING)
     private GoodsStatus status;
 
-    @Column(length = 500)
     private String comment;
 
-    private LocalDateTime reviewedAt = LocalDateTime.now();
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "goods_id")
+    @OneToOne
+    @JoinColumn(name = "goods_id", nullable = false)
     private Goods goods;
 }
 
 
 ---
 
-3. Enum: GoodsStatus.java
-
-package org.policy.enums;
-
-public enum GoodsStatus {
-    PENDING,
-    APPROVED,
-    REJECTED
-}
-
-
----
-
-4. DTO: GoodsReviewDto.java
+3. GoodsReviewDto
 
 package org.policy.dto;
 
-import lombok.Data;
+import lombok.*;
 import org.policy.enums.GoodsStatus;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class GoodsReviewDto {
+
     private Long id;
-    private Long goodsId;
+
     private GoodsStatus status;
+
     private String comment;
+
+    private Long goodsId;
 }
 
 
 ---
 
-5. Mapper: GoodsReviewMapper.java
-
-package org.policy.mapper;
-
-import org.policy.dto.GoodsReviewDto;
-import org.policy.entity.Goods;
-import org.policy.entity.GoodsReview;
-import org.springframework.stereotype.Component;
-
-@Component
-public class GoodsReviewMapper {
-
-    public GoodsReview toEntity(GoodsReviewDto dto, Goods goods) {
-        GoodsReview review = new GoodsReview();
-        review.setStatus(dto.getStatus());
-        review.setComment(dto.getComment());
-        review.setGoods(goods);
-        return review;
-    }
-
-    public GoodsReviewDto toDto(GoodsReview review) {
-        GoodsReviewDto dto = new GoodsReviewDto();
-        dto.setId(review.getId());
-        dto.setGoodsId(review.getGoods().getId());
-        dto.setStatus(review.getStatus());
-        dto.setComment(review.getComment());
-        return dto;
-    }
-}
-
-
----
-
-6. Repository: GoodsReviewRepository.java
+4. GoodsReviewRepository
 
 package org.policy.repository;
 
@@ -156,7 +84,7 @@ public interface GoodsReviewRepository extends JpaRepository<GoodsReview, Long> 
 
 ---
 
-7. Service Interface: GoodsReviewService.java
+5. GoodsReviewService
 
 package org.policy.service;
 
@@ -172,7 +100,7 @@ public interface GoodsReviewService {
 
 ---
 
-8. Service Implementation: GoodsReviewServiceImpl.java
+6. GoodsReviewServiceImpl
 
 package org.policy.service.impl;
 
@@ -181,7 +109,6 @@ import org.policy.dto.GoodsReviewDto;
 import org.policy.entity.Goods;
 import org.policy.entity.GoodsReview;
 import org.policy.enums.GoodsStatus;
-import org.policy.mapper.GoodsReviewMapper;
 import org.policy.repository.GoodsRepository;
 import org.policy.repository.GoodsReviewRepository;
 import org.policy.service.GoodsReviewService;
@@ -197,34 +124,46 @@ public class GoodsReviewServiceImpl implements GoodsReviewService {
 
     private final GoodsReviewRepository reviewRepo;
     private final GoodsRepository goodsRepo;
-    private final GoodsReviewMapper mapper;
 
     @Override
     public GoodsReviewDto reviewGoods(GoodsReviewDto dto) {
         Goods goods = goodsRepo.findById(dto.getGoodsId())
-            .orElseThrow(() -> new NoSuchElementException("Goods not found"));
+                .orElseThrow(() -> new NoSuchElementException("Goods not found with id: " + dto.getGoodsId()));
 
-        if (dto.getStatus() == GoodsStatus.REJECTED && (dto.getComment() == null || dto.getComment().isBlank())) {
-            throw new IllegalArgumentException("Comment is required when rejecting goods");
+        if (dto.getStatus() == GoodsStatus.REJECTED && (dto.getComment() == null || dto.getComment().isEmpty())) {
+            throw new IllegalArgumentException("Comment is required when rejecting goods.");
         }
 
         goods.setStatus(dto.getStatus().name());
-        goodsRepo.save(goods);
 
-        GoodsReview review = mapper.toEntity(dto, goods);
-        return mapper.toDto(reviewRepo.save(review));
+        GoodsReview review = new GoodsReview();
+        review.setStatus(dto.getStatus());
+        review.setComment(dto.getComment());
+        review.setGoods(goods);
+
+        goodsRepo.save(goods);
+        GoodsReview saved = reviewRepo.save(review);
+
+        return new GoodsReviewDto(saved.getId(), saved.getStatus(), saved.getComment(), saved.getGoods().getId());
     }
 
     @Override
     public List<GoodsReviewDto> getAllReviews() {
-        return reviewRepo.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
+        return reviewRepo.findAll().stream().map(review ->
+            new GoodsReviewDto(
+                review.getId(),
+                review.getStatus(),
+                review.getComment(),
+                review.getGoods().getId()
+            )
+        ).collect(Collectors.toList());
     }
 }
 
 
 ---
 
-9. Controller: GoodsReviewController.java
+7. GoodsReviewController
 
 package org.policy.controller;
 
@@ -236,31 +175,113 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/reviews")
+@RequestMapping("/api/goods-review")
 @RequiredArgsConstructor
 public class GoodsReviewController {
 
-    private final GoodsReviewService reviewService;
+    private final GoodsReviewService service;
 
     @PostMapping
-    public GoodsReviewDto review(@RequestBody GoodsReviewDto dto) {
-        return reviewService.reviewGoods(dto);
+    public GoodsReviewDto reviewGoods(@RequestBody GoodsReviewDto dto) {
+        return service.reviewGoods(dto);
     }
 
     @GetMapping
-    public List<GoodsReviewDto> getAll() {
-        return reviewService.getAllReviews();
+    public List<GoodsReviewDto> getAllReviews() {
+        return service.getAllReviews();
     }
 }
 
 
 ---
 
-Optional: Goods Entity Update (if needed)
+8. Sample JSON Input for Testing
 
-Make sure your Goods entity has a status field like this:
+Approve Goods
 
-@Column(length = 20)
-private String status;
+{
+  "goodsId": 1,
+  "status": "APPROVED",
+  "comment": "Looks good"
+}
 
-Let me know if you want the Angular frontend for this (Logistics Coordinator: review UI).
+Reject Goods
+
+{
+  "goodsId": 2,
+  "status": "REJECTED",
+  "comment": "Packaging damaged"
+}
+
+Let me know if you want the Liquibase XML to create the goods_review table as well.
+
+Here is the Liquibase XML for the goods_review table, based on the GoodsReview entity:
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ChangeSet for creating 'goods_review' table -->
+    <changeSet author="yourname" id="1" dbms="postgresql, mysql, h2, mssql">
+        <createTable tableName="goods_review">
+            <column name="id" type="bigint">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="status" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="comment" type="text"/>
+            <column name="goods_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Foreign Key Constraint -->
+            <addForeignKeyConstraint 
+                baseTableName="goods_review"
+                baseColumnNames="goods_id"
+                referencedTableName="goods"
+                referencedColumnNames="id"
+                constraintName="fk_goods_review_goods"
+                onDelete="CASCADE"/>
+        </createTable>
+    </changeSet>
+
+    <!-- ChangeSet for adding sample data (Optional) -->
+    <changeSet author="yourname" id="2" dbms="postgresql, mysql, h2, mssql">
+        <insert tableName="goods_review">
+            <column name="status" value="PENDING"/>
+            <column name="comment" value=""/>
+            <column name="goods_id" value="1"/>
+        </insert>
+        <insert tableName="goods_review">
+            <column name="status" value="APPROVED"/>
+            <column name="comment" value="Approved after checking"/>
+            <column name="goods_id" value="2"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
+
+Explanation:
+
+createTable: This creates the goods_review table with columns:
+
+id: Primary key (auto-generated).
+
+status: The status of the review (APPROVED, REJECTED, or PENDING).
+
+comment: Optional comment for rejection or approval.
+
+goods_id: Foreign key referencing the goods table.
+
+
+addForeignKeyConstraint: This creates the foreign key relationship between goods_review.goods_id and goods.id with a CASCADE delete policy (deletes the review when the associated goods are deleted).
+
+Sample Data: The insert statements are optional. They add sample data for testing purposes.
+
+
+You can use this XML with Liquibase to create the goods_review table and optionally insert sample data. Let me know if you need any more adjustments!
