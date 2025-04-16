@@ -1,18 +1,45 @@
-",
-  "remarks": "Looks good",
-  "goodsId": 1
+Here's the complete backend source code for the GoodsReview feature, including the goodsId reference. This covers entity, DTO, repository, service, controller, and Liquibase changes.
+
+
+---
+
+1. Entity: GoodsReview.java
+
+package org.policy.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "goods_review")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class GoodsReview {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Enumerated(EnumType.STRING)
+    private GoodsStatus status;
+
+    private String comment;
+
+    private LocalDateTime reviewedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "goods_id", nullable = false)
+    private Goods goods;
 }
 
 
 ---
 
-Would you like me to now proceed with Frontend Angular structure and full source code for this Quality Check feature (Day 5)?
-Sure! Let’s create an enum for status values (PENDING, APPROVED, and REJECTED) and implement it in the backend across the Goods and QualityCheck sections accordingly.
-
-
----
-
-1. Create the Enum
+2. Enum: GoodsStatus.java
 
 package org.policy.enums;
 
@@ -25,7 +52,224 @@ public enum GoodsStatus {
 
 ---
 
-2. Update the Goods Entity
+3. DTO: GoodsReviewDto.java
+
+package org.policy.dto;
+
+import lombok.Data;
+import org.policy.enums.GoodsStatus;
+
+import java.time.LocalDateTime;
+
+@Data
+public class GoodsReviewDto {
+    private Long id;
+    private Long goodsId;
+    private GoodsStatus status;
+    private String comment;
+    private LocalDateTime reviewedAt;
+}
+
+
+---
+
+4. Repository: GoodsReviewRepository.java
+
+package org.policy.repository;
+
+import org.policy.entity.GoodsReview;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface GoodsReviewRepository extends JpaRepository<GoodsReview, Long> {
+}
+
+
+---
+
+5. Mapper: GoodsReviewMapper.java
+
+package org.policy.mapper;
+
+import org.policy.dto.GoodsReviewDto;
+import org.policy.entity.GoodsReview;
+import org.policy.entity.Goods;
+
+public class GoodsReviewMapper {
+
+    public static GoodsReview toEntity(GoodsReviewDto dto, Goods goods) {
+        GoodsReview entity = new GoodsReview();
+        entity.setId(dto.getId());
+        entity.setStatus(dto.getStatus());
+        entity.setComment(dto.getComment());
+        entity.setReviewedAt(dto.getReviewedAt());
+        entity.setGoods(goods);
+        return entity;
+    }
+
+    public static GoodsReviewDto toDto(GoodsReview entity) {
+        GoodsReviewDto dto = new GoodsReviewDto();
+        dto.setId(entity.getId());
+        dto.setGoodsId(entity.getGoods().getId());
+        dto.setStatus(entity.getStatus());
+        dto.setComment(entity.getComment());
+        dto.setReviewedAt(entity.getReviewedAt());
+        return dto;
+    }
+}
+
+
+---
+
+6. Service Interface: GoodsReviewService.java
+
+package org.policy.service;
+
+import org.policy.dto.GoodsReviewDto;
+
+import java.util.List;
+
+public interface GoodsReviewService {
+    GoodsReviewDto reviewGoods(GoodsReviewDto dto);
+    List<GoodsReviewDto> getAll();
+}
+
+
+---
+
+7. Service Impl: GoodsReviewServiceImpl.java
+
+package org.policy.service.impl;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.GoodsReviewDto;
+import org.policy.entity.Goods;
+import org.policy.entity.GoodsReview;
+import org.policy.enums.GoodsStatus;
+import org.policy.mapper.GoodsReviewMapper;
+import org.policy.repository.GoodsRepository;
+import org.policy.repository.GoodsReviewRepository;
+import org.policy.service.GoodsReviewService;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class GoodsReviewServiceImpl implements GoodsReviewService {
+
+    private final GoodsReviewRepository reviewRepository;
+    private final GoodsRepository goodsRepository;
+
+    @Override
+    public GoodsReviewDto reviewGoods(GoodsReviewDto dto) {
+        Goods goods = goodsRepository.findById(dto.getGoodsId())
+                .orElseThrow(() -> new RuntimeException("Goods not found"));
+
+        GoodsReview review = GoodsReviewMapper.toEntity(dto, goods);
+        review.setReviewedAt(LocalDateTime.now());
+
+        // Update goods status too
+        goods.setStatus(dto.getStatus().name());
+        goodsRepository.save(goods);
+
+        return GoodsReviewMapper.toDto(reviewRepository.save(review));
+    }
+
+    @Override
+    public List<GoodsReviewDto> getAll() {
+        return reviewRepository.findAll().stream()
+                .map(GoodsReviewMapper::toDto)
+                .collect(Collectors.toList());
+    }
+}
+
+
+---
+
+8. Controller: GoodsReviewController.java
+
+package org.policy.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.GoodsReviewDto;
+import org.policy.service.GoodsReviewService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/goods-reviews")
+@RequiredArgsConstructor
+public class GoodsReviewController {
+
+    private final GoodsReviewService reviewService;
+
+    @PostMapping
+    public GoodsReviewDto reviewGoods(@RequestBody GoodsReviewDto dto) {
+        return reviewService.reviewGoods(dto);
+    }
+
+    @GetMapping
+    public List<GoodsReviewDto> getAll() {
+        return reviewService.getAll();
+    }
+}
+
+
+---
+
+9. Liquibase XML: db.changelog-<timestamp>-goods-review.xml
+
+<changeSet id="create-goods-review" author="yourname">
+    <createTable tableName="goods_review">
+        <column name="id" type="BIGINT" autoIncrement="true">
+            <constraints primaryKey="true" nullable="false"/>
+        </column>
+        <column name="status" type="VARCHAR(20)"/>
+        <column name="comment" type="VARCHAR(500)"/>
+        <column name="reviewed_at" type="TIMESTAMP"/>
+        <column name="goods_id" type="BIGINT">
+            <constraints nullable="false" foreignKeyName="fk_goods_review_goods"
+                         referencedTableName="goods" referencedColumnNames="id"/>
+        </column>
+    </createTable>
+</changeSet>
+
+
+---
+
+10. Sample JSON for Testing the API
+
+{
+  "goodsId": 1,
+  "status": "REJECTED",
+  "comment": "Damaged packaging"
+}
+
+Or
+
+{
+  "goodsId": 2,
+  "status": "APPROVED",
+  "comment": ""
+}
+
+
+---
+
+Let me know if you want the frontend code for Goods Review as well.
+
+
+
+
+Yes, to fully support GoodsReview functionality, especially status tracking and linking to reviews, you need to update your Goods entity slightly. Here's the complete updated Goods.java file with the required changes:
+
+
+---
+
+Updated Goods.java
 
 package org.policy.entity;
 
@@ -34,6 +278,7 @@ import lombok.*;
 import org.policy.enums.GoodsStatus;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Table(name = "goods")
@@ -48,6 +293,7 @@ public class Goods {
     private Long id;
 
     private String name;
+
     private Integer quantity;
 
     @Column(name = "unit_of_measure")
@@ -65,10 +311,11 @@ public class Goods {
     private Integer minimumStockLevel;
 
     private Double price;
+
     private String supplier;
 
     @Enumerated(EnumType.STRING)
-    private GoodsStatus status = GoodsStatus.PENDING;
+    private GoodsStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -77,349 +324,46 @@ public class Goods {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
+
+    // Optional if you want a back-reference (not required unless bidirectional)
+    @OneToMany(mappedBy = "goods", cascade = CascadeType.ALL)
+    private List<GoodsReview> reviews;
 }
 
 
 ---
 
-3. Update the QualityCheck Entity
+Explanation of Changes:
 
-package org.policy.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-import org.policy.enums.GoodsStatus;
-
-import java.time.LocalDate;
-
-@Entity
-@Table(name = "quality_check")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class QualityCheck {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String inspectorName;
-    private LocalDate checkDate;
-
-    @Enumerated(EnumType.STRING)
-    private GoodsStatus status;
-
-    private String remarks;
-
-    @OneToOne
-    @JoinColumn(name = "goods_id")
-    private Goods goods;
-}
-
-
----
-
-4. Update QualityCheckDTO
-
-package org.policy.dto;
-
-import lombok.*;
-import org.policy.enums.GoodsStatus;
-
-import java.time.LocalDate;
-
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class QualityCheckDTO {
-    private Long id;
-    private String inspectorName;
-    private LocalDate checkDate;
-    private GoodsStatus status;
-    private String remarks;
-    private Long goodsId;
-}
-
-
----
-
-5. Update QualityCheckServiceImpl
-
-No changes to logic, but now it works with GoodsStatus enum:
-
-goods.setStatus(dto.getStatus()); // dto.getStatus() is now of type GoodsStatus
-
-
----
-
-6. Sample JSON (Updated with Enum)
-
-{
-  "inspectorName": "Rajeev Singh",
-  "checkDate": "2025-04-14",
-  "status": "APPROVED",
-  "remarks": "All good. No issues found.",
-  "goodsId": 2
-}
-
-
----
-
-Let me know if you want me to now generate the frontend code for the Logistics Coordinator section to review and approve goods using this enum setup.
-
-
-
-Great! Below is the complete structure and full backend source code for Day 5: Quality Check using an enum for GoodsStatus with values: PENDING, APPROVED, and REJECTED.
-
-
----
-
-1. Enum: GoodsStatus
-
-// src/main/java/org/policy/enums/GoodsStatus.java
-package org.policy.enums;
-
-public enum GoodsStatus {
-    PENDING,
-    APPROVED,
-    REJECTED
-}
-
-
----
-
-2. Entity: GoodsReview
-
-// src/main/java/org/policy/entity/GoodsReview.java
-package org.policy.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-import java.time.LocalDateTime;
-
-@Entity
-@Table(name = "goods_review")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class GoodsReview {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String comment;
-
-    private LocalDateTime reviewedAt;
-
-    @Enumerated(EnumType.STRING)
-    private org.policy.enums.GoodsStatus status;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "goods_id")
-    private Goods goods;
-}
-
-
----
-
-3. DTO: GoodsReviewDto
-
-// src/main/java/org/policy/dto/GoodsReviewDto.java
-package org.policy.dto;
-
-import lombok.*;
-import org.policy.enums.GoodsStatus;
-
-import java.time.LocalDateTime;
-
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class GoodsReviewDto {
-    private Long id;
-    private Long goodsId;
-    private String comment;
-    private GoodsStatus status;
-    private LocalDateTime reviewedAt;
-}
-
-
----
-
-4. Mapper: GoodsReviewMapper
-
-// src/main/java/org/policy/mapper/GoodsReviewMapper.java
-package org.policy.mapper;
-
-import org.policy.dto.GoodsReviewDto;
-import org.policy.entity.GoodsReview;
-import org.policy.entity.Goods;
-
-public class GoodsReviewMapper {
-
-    public static GoodsReview toEntity(GoodsReviewDto dto, Goods goods) {
-        GoodsReview review = new GoodsReview();
-        review.setId(dto.getId());
-        review.setComment(dto.getComment());
-        review.setStatus(dto.getStatus());
-        review.setReviewedAt(dto.getReviewedAt());
-        review.setGoods(goods);
-        return review;
-    }
-
-    public static GoodsReviewDto toDto(GoodsReview review) {
-        return new GoodsReviewDto(
-            review.getId(),
-            review.getGoods().getId(),
-            review.getComment(),
-            review.getStatus(),
-            review.getReviewedAt()
-        );
-    }
-}
-
-
----
-
-5. Repository: GoodsReviewRepository
-
-// src/main/java/org/policy/repository/GoodsReviewRepository.java
-package org.policy.repository;
-
-import org.policy.entity.GoodsReview;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface GoodsReviewRepository extends JpaRepository<GoodsReview, Long> {
-}
-
-
----
-
-6. Service Interface: GoodsReviewService
-
-// src/main/java/org/policy/service/GoodsReviewService.java
-package org.policy.service;
-
-import org.policy.dto.GoodsReviewDto;
-
-public interface GoodsReviewService {
-    GoodsReviewDto reviewGoods(Long goodsId, GoodsReviewDto dto);
-}
-
-
----
-
-7. Service Implementation
-
-// src/main/java/org/policy/service/impl/GoodsReviewServiceImpl.java
-package org.policy.service.impl;
-
-import lombok.RequiredArgsConstructor;
-import org.policy.dto.GoodsReviewDto;
-import org.policy.entity.Goods;
-import org.policy.entity.GoodsReview;
-import org.policy.enums.GoodsStatus;
-import org.policy.mapper.GoodsReviewMapper;
-import org.policy.repository.GoodsRepository;
-import org.policy.repository.GoodsReviewRepository;
-import org.policy.service.GoodsReviewService;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-
-@Service
-@RequiredArgsConstructor
-public class GoodsReviewServiceImpl implements GoodsReviewService {
-
-    private final GoodsRepository goodsRepository;
-    private final GoodsReviewRepository goodsReviewRepository;
-
-    @Override
-    public GoodsReviewDto reviewGoods(Long goodsId, GoodsReviewDto dto) {
-        Goods goods = goodsRepository.findById(goodsId)
-                .orElseThrow(() -> new RuntimeException("Goods not found"));
-
-        if (dto.getStatus() == GoodsStatus.REJECTED && (dto.getComment() == null || dto.getComment().isBlank())) {
-            throw new RuntimeException("Comment is required for rejection");
-        }
-
-        goods.setStatus(dto.getStatus());
-        goodsRepository.save(goods);
-
-        GoodsReview review = GoodsReviewMapper.toEntity(dto, goods);
-        review.setReviewedAt(LocalDateTime.now());
-
-        GoodsReview savedReview = goodsReviewRepository.save(review);
-        return GoodsReviewMapper.toDto(savedReview);
-    }
-}
-
-
----
-
-8. Controller: GoodsReviewController
-
-// src/main/java/org/policy/controller/GoodsReviewController.java
-package org.policy.controller;
-
-import lombok.RequiredArgsConstructor;
-import org.policy.dto.GoodsReviewDto;
-import org.policy.service.GoodsReviewService;
-import org.springframework.web.bind.annotation.*;
-
-@RestController
-@RequestMapping("/api/reviews")
-@RequiredArgsConstructor
-public class GoodsReviewController {
-
-    private final GoodsReviewService service;
-
-    @PostMapping("/{goodsId}")
-    public GoodsReviewDto reviewGoods(@PathVariable Long goodsId, @RequestBody GoodsReviewDto dto) {
-        return service.reviewGoods(goodsId, dto);
-    }
-}
-
-
----
-
-9. Update Goods Entity
-
-Make sure this is in Goods.java:
+1. Enum GoodsStatus Used:
 
 @Enumerated(EnumType.STRING)
 private GoodsStatus status;
 
-@OneToOne(mappedBy = "goods", cascade = CascadeType.ALL)
-private GoodsReview goodsReview;
+Replaces the String status; to enforce enum typing.
+
+
+
+2. Back-reference to GoodsReview (Optional):
+
+@OneToMany(mappedBy = "goods", cascade = CascadeType.ALL)
+private List<GoodsReview> reviews;
+
+Only needed if you want to see all reviews linked to a good from the Goods side.
+
+
+
+3. Field Fixes (Optional Corrections):
+
+unitOfMeasure spelling fixed.
+
+Annotation formatting cleaned up for better readability and consistency.
+
+
+
 
 
 ---
 
-10. Sample JSON for Testing
-
-Approved
-
-{
-  "status": "APPROVED",
-  "comment": "Good quality item"
-}
-
-Rejected
-
-{
-  "status": "REJECTED",
-  "comment": "Item has visible damage"
-}
-
-
----
-
-Let me know when you're ready for the frontend structure (Angular with PrimeNG and Reactive Forms) for Quality Check.
-
+Let me know if you want the Liquibase changes for adding the status column using Enum, or if you need to reflect this on the frontend as well.
 
