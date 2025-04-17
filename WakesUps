@@ -1,26 +1,73 @@
-Thanks for sharing the full code. The issue is caused by this line in your ReportRepository:
+Here's the complete and updated backend source code for Day 7: Reporting (Spring Boot). It includes:
 
-public interface ReportRepository extends Repository<Object, Long>
+Report DTOs
 
-This is incorrect because Object is not a managed entity. Spring Data needs a concrete entity class (like Goods or GoodsReview) as the domain type in your repository interface. Since your queries involve both Goods and GoodsReview, the best practice is to extend JpaRepository<Goods, Long> (or any one valid entity), and write custom queries.
+Repository queries
+
+Service logic
+
+Controller endpoints
+
+Fixes to resolve previous errors (such as DTO instantiation issues and managed type problems)
+
 
 
 ---
 
-✅ Here's the updated and working version:
+1. ReportDto.java (under org.policy.dto)
 
-Updated ReportRepository.java
+package org.policy.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+
+public class ReportDto {
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class CategoryGoodsCount implements Serializable {
+        private String categoryName;
+        private Long totalGoods;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class StatusSummary implements Serializable {
+        private Long approved;
+        private Long rejected;
+        private Long pending;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class RejectionReason implements Serializable {
+        private String reason;
+        private Long count;
+    }
+}
+
+
+---
+
+2. ReportRepository.java (under org.policy.repository)
 
 package org.policy.repository;
 
 import org.policy.dto.ReportDto;
 import org.policy.entity.Goods;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.policy.entity.GoodsReview;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.CrudRepository;
 
 import java.util.List;
 
-public interface ReportRepository extends JpaRepository<Goods, Long> {
+public interface ReportRepository extends CrudRepository<Goods, Long> {
 
     @Query("SELECT new org.policy.dto.ReportDto.CategoryGoodsCount(c.name, COUNT(g)) " +
            "FROM Goods g JOIN g.category c GROUP BY c.name")
@@ -41,17 +88,84 @@ public interface ReportRepository extends JpaRepository<Goods, Long> {
 
 ---
 
-Notes:
+3. ReportService.java (under org.policy.service)
 
-extends JpaRepository<Goods, Long> ensures Goods is a managed JPA entity.
+package org.policy.service;
 
-If you're running into Not a managed type: class java.lang.Object, it's because of the Repository<Object, Long>, which is invalid.
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.ReportDto;
+import org.policy.repository.ReportRepository;
+import org.springframework.stereotype.Service;
 
-This updated version fixes the Spring Boot bean creation issue.
+import java.util.List;
 
+@Service
+@RequiredArgsConstructor
+public class ReportService {
+
+    private final ReportRepository repository;
+
+    public List<ReportDto.CategoryGoodsCount> getGoodsCountByCategory() {
+        return repository.fetchGoodsByCategory();
+    }
+
+    public ReportDto.StatusSummary getStatusSummary() {
+        return repository.fetchStatusSummary();
+    }
+
+    public List<ReportDto.RejectionReason> getRejectionSummary() {
+        return repository.fetchRejectionReasons();
+    }
+}
 
 
 ---
 
-Let me know if you're using a different structure (e.g., base repository), and I’ll tailor it accordingly.
+4. ReportController.java (under org.policy.controller)
+
+package org.policy.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.ReportDto;
+import org.policy.service.ReportService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/reports")
+@RequiredArgsConstructor
+public class ReportController {
+
+    private final ReportService reportService;
+
+    @GetMapping("/goods-by-category")
+    public List<ReportDto.CategoryGoodsCount> getGoodsCountByCategory() {
+        return reportService.getGoodsCountByCategory();
+    }
+
+    @GetMapping("/status-summary")
+    public ReportDto.StatusSummary getStatusSummary() {
+        return reportService.getStatusSummary();
+    }
+
+    @GetMapping("/rejection-summary")
+    public List<ReportDto.RejectionReason> getRejectionSummary() {
+        return reportService.getRejectionSummary();
+    }
+}
+
+
+---
+
+5. Required Entity Bindings (for repository support)
+
+Make sure your Goods.java and GoodsReview.java entities are properly annotated and available in the same JPA context.
+
+If GoodsReview is in a different repository, you may need to move the rejection query to its own repository or adjust accordingly.
+
+
+---
+
+Would you also like me to include test JSON input/output samples for these report APIs or move to Day 8 (Excel download)?
 
