@@ -1,3 +1,201 @@
+Here is the complete backend structure and source code for Day 7: Reporting - Backend Logic using Spring Boot, H2, and Liquibase. This module uses native queries and Spring Data JPA to generate reports.
+
+
+---
+
+Backend Structure (Folder & Files)
+
+org.policy
+│
+├── controller
+│   └── ReportController.java
+│
+├── dto
+│   └── ReportDto.java
+│
+├── entity
+│   └── (No changes)
+│
+├── repository
+│   └── ReportRepository.java
+│
+├── service
+│   └── ReportService.java
+│
+├── Liquibase
+│   └── db.changelog-<date>-report.xml
+
+
+---
+
+1. ReportController.java
+
+package org.policy.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.ReportDto;
+import org.policy.service.ReportService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/reports")
+@RequiredArgsConstructor
+public class ReportController {
+
+    private final ReportService reportService;
+
+    @GetMapping("/goods-by-category")
+    public List<ReportDto.CategoryGoodsCount> getGoodsCountByCategory() {
+        return reportService.getGoodsCountByCategory();
+    }
+
+    @GetMapping("/status-summary")
+    public ReportDto.StatusSummary getStatusSummary() {
+        return reportService.getStatusSummary();
+    }
+
+    @GetMapping("/rejection-summary")
+    public List<ReportDto.RejectionReason> getRejectionSummary() {
+        return reportService.getRejectionSummary();
+    }
+}
+
+
+---
+
+2. ReportService.java
+
+package org.policy.service;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.ReportDto;
+import org.policy.repository.ReportRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class ReportService {
+
+    private final ReportRepository repository;
+
+    public List<ReportDto.CategoryGoodsCount> getGoodsCountByCategory() {
+        return repository.fetchGoodsByCategory();
+    }
+
+    public ReportDto.StatusSummary getStatusSummary() {
+        return repository.fetchStatusSummary();
+    }
+
+    public List<ReportDto.RejectionReason> getRejectionSummary() {
+        return repository.fetchRejectionReasons();
+    }
+}
+
+
+---
+
+3. ReportRepository.java
+
+package org.policy.repository;
+
+import org.policy.dto.ReportDto;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.Repository;
+
+import java.util.List;
+
+public interface ReportRepository extends Repository<Object, Long> {
+
+    @Query("SELECT new org.policy.dto.ReportDto.CategoryGoodsCount(c.name, COUNT(g)) " +
+           "FROM Goods g JOIN g.category c GROUP BY c.name")
+    List<ReportDto.CategoryGoodsCount> fetchGoodsByCategory();
+
+    @Query("SELECT new org.policy.dto.ReportDto.StatusSummary(" +
+           "SUM(CASE WHEN g.status = 'APPROVED' THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN g.status = 'REJECTED' THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN g.status = 'PENDING' THEN 1 ELSE 0 END)) " +
+           "FROM Goods g")
+    ReportDto.StatusSummary fetchStatusSummary();
+
+    @Query("SELECT new org.policy.dto.ReportDto.RejectionReason(r.comment, COUNT(r)) " +
+           "FROM GoodsReview r WHERE r.status = 'REJECTED' GROUP BY r.comment")
+    List<ReportDto.RejectionReason> fetchRejectionReasons();
+}
+
+
+---
+
+4. ReportDto.java
+
+package org.policy.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+import java.io.Serializable;
+
+public class ReportDto {
+
+    @Data
+    @AllArgsConstructor
+    public static class CategoryGoodsCount implements Serializable {
+        private String categoryName;
+        private Long totalGoods;
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class StatusSummary implements Serializable {
+        private Long approved;
+        private Long rejected;
+        private Long pending;
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class RejectionReason implements Serializable {
+        private String reason;
+        private Long count;
+    }
+}
+
+
+---
+
+5. Liquibase XML - db.changelog-report.xml
+
+<changeSet id="2025-04-16-01" author="dev">
+    <comment>Initial data for reports testing</comment>
+    <insert tableName="category">
+        <column name="id" value="1"/>
+        <column name="name" value="Electronics"/>
+    </insert>
+    <insert tableName="goods">
+        <column name="id" value="1"/>
+        <column name="name" value="Laptop"/>
+        <column name="quantity" value="10"/>
+        <column name="category_id" value="1"/>
+        <column name="status" value="APPROVED"/>
+    </insert>
+    <insert tableName="goods_review">
+        <column name="id" value="1"/>
+        <column name="goods_id" value="1"/>
+        <column name="status" value="REJECTED"/>
+        <column name="comment" value="Packaging damage"/>
+    </insert>
+</changeSet>
+
+
+---
+
+Let me know if you want the corresponding JSON outputs for these reports as well.
+
+
+
 Here are sample JSON responses for the reporting APIs of Day 7: Reporting - Backend Logic:
 
 
