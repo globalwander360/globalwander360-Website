@@ -1,8 +1,48 @@
-Here’s the complete working backend implementation of the GoodsReview feature with approval/rejection logic and validation, including:
+GoodsReview entity and DTO
 
-1. GoodsStatus Enum
+Enum for GoodsStatus
 
-package org.policy.enums;
+Controller, Service, Repository
+
+Liquibase XML changelog for goods_review table
+
+Goods update on approval/rejection
+
+H2 & Liquibase compatible setup
+
+
+
+---
+
+1. Package Structure:
+
+src/main/java/org/policy
+├── config
+├── controller
+│   └── GoodsReviewController.java
+├── dto
+│   └── GoodsReviewDto.java
+├── entity
+│   ├── Goods.java
+│   ├── GoodsReview.java
+│   └── enum
+│       └── GoodsStatus.java
+├── mapper
+│   └── GoodsReviewMapper.java
+├── repository
+│   ├── GoodsRepository.java
+│   └── GoodsReviewRepository.java
+├── service
+│   ├── GoodsReviewService.java
+│   └── impl
+│       └── GoodsReviewServiceImpl.java
+
+
+---
+
+2. GoodsStatus.java
+
+package org.policy.entity.enum;
 
 public enum GoodsStatus {
     PENDING,
@@ -13,20 +53,22 @@ public enum GoodsStatus {
 
 ---
 
-2. GoodsReview Entity
+3. GoodsReview.java
 
 package org.policy.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.policy.enums.GoodsStatus;
+import org.policy.entity.enum.GoodsStatus;
+
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "goods_review")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "goods_review")
 public class GoodsReview {
 
     @Id
@@ -38,40 +80,37 @@ public class GoodsReview {
 
     private String comment;
 
-    @OneToOne
-    @JoinColumn(name = "goods_id", nullable = false)
+    private LocalDateTime reviewDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "goods_id")
     private Goods goods;
 }
 
 
 ---
 
-3. GoodsReviewDto
+4. GoodsReviewDto.java
 
 package org.policy.dto;
 
 import lombok.*;
-import org.policy.enums.GoodsStatus;
+import org.policy.entity.enum.GoodsStatus;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class GoodsReviewDto {
-
     private Long id;
-
-    private GoodsStatus status;
-
-    private String comment;
-
     private Long goodsId;
+    private GoodsStatus status;
+    private String comment;
 }
 
 
 ---
 
-4. GoodsReviewRepository
+5. GoodsReviewRepository.java
 
 package org.policy.repository;
 
@@ -84,7 +123,38 @@ public interface GoodsReviewRepository extends JpaRepository<GoodsReview, Long> 
 
 ---
 
-5. GoodsReviewService
+6. GoodsReviewMapper.java
+
+package org.policy.mapper;
+
+import org.policy.dto.GoodsReviewDto;
+import org.policy.entity.Goods;
+import org.policy.entity.GoodsReview;
+
+public class GoodsReviewMapper {
+    public static GoodsReview toEntity(GoodsReviewDto dto, Goods goods) {
+        GoodsReview review = new GoodsReview();
+        review.setStatus(dto.getStatus());
+        review.setComment(dto.getComment());
+        review.setGoods(goods);
+        review.setReviewDate(java.time.LocalDateTime.now());
+        return review;
+    }
+
+    public static GoodsReviewDto toDto(GoodsReview review) {
+        return new GoodsReviewDto(
+                review.getId(),
+                review.getGoods().getId(),
+                review.getStatus(),
+                review.getComment()
+        );
+    }
+}
+
+
+---
+
+7. GoodsReviewService.java
 
 package org.policy.service;
 
@@ -94,13 +164,13 @@ import java.util.List;
 
 public interface GoodsReviewService {
     GoodsReviewDto reviewGoods(GoodsReviewDto dto);
-    List<GoodsReviewDto> getAllReviews();
+    List<GoodsReviewDto> getAll();
 }
 
 
 ---
 
-6. GoodsReviewServiceImpl
+8. GoodsReviewServiceImpl.java
 
 package org.policy.service.impl;
 
@@ -108,7 +178,8 @@ import lombok.RequiredArgsConstructor;
 import org.policy.dto.GoodsReviewDto;
 import org.policy.entity.Goods;
 import org.policy.entity.GoodsReview;
-import org.policy.enums.GoodsStatus;
+import org.policy.entity.enum.GoodsStatus;
+import org.policy.mapper.GoodsReviewMapper;
 import org.policy.repository.GoodsRepository;
 import org.policy.repository.GoodsReviewRepository;
 import org.policy.service.GoodsReviewService;
@@ -122,48 +193,38 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GoodsReviewServiceImpl implements GoodsReviewService {
 
-    private final GoodsReviewRepository reviewRepo;
-    private final GoodsRepository goodsRepo;
+    private final GoodsReviewRepository reviewRepository;
+    private final GoodsRepository goodsRepository;
 
     @Override
     public GoodsReviewDto reviewGoods(GoodsReviewDto dto) {
-        Goods goods = goodsRepo.findById(dto.getGoodsId())
-                .orElseThrow(() -> new NoSuchElementException("Goods not found with id: " + dto.getGoodsId()));
-
         if (dto.getStatus() == GoodsStatus.REJECTED && (dto.getComment() == null || dto.getComment().isEmpty())) {
             throw new IllegalArgumentException("Comment is required when rejecting goods.");
         }
 
-        goods.setStatus(dto.getStatus().name());
+        Goods goods = goodsRepository.findById(dto.getGoodsId())
+                .orElseThrow(() -> new NoSuchElementException("Goods not found"));
 
-        GoodsReview review = new GoodsReview();
-        review.setStatus(dto.getStatus());
-        review.setComment(dto.getComment());
-        review.setGoods(goods);
+        goods.setStatus(dto.getStatus().name()); // update status
+        goodsRepository.save(goods);
 
-        goodsRepo.save(goods);
-        GoodsReview saved = reviewRepo.save(review);
-
-        return new GoodsReviewDto(saved.getId(), saved.getStatus(), saved.getComment(), saved.getGoods().getId());
+        GoodsReview review = GoodsReviewMapper.toEntity(dto, goods);
+        return GoodsReviewMapper.toDto(reviewRepository.save(review));
     }
 
     @Override
-    public List<GoodsReviewDto> getAllReviews() {
-        return reviewRepo.findAll().stream().map(review ->
-            new GoodsReviewDto(
-                review.getId(),
-                review.getStatus(),
-                review.getComment(),
-                review.getGoods().getId()
-            )
-        ).collect(Collectors.toList());
+    public List<GoodsReviewDto> getAll() {
+        return reviewRepository.findAll()
+                .stream()
+                .map(GoodsReviewMapper::toDto)
+                .collect(Collectors.toList());
     }
 }
 
 
 ---
 
-7. GoodsReviewController
+9. GoodsReviewController.java
 
 package org.policy.controller;
 
@@ -179,109 +240,808 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GoodsReviewController {
 
-    private final GoodsReviewService service;
+    private final GoodsReviewService reviewService;
 
     @PostMapping
     public GoodsReviewDto reviewGoods(@RequestBody GoodsReviewDto dto) {
-        return service.reviewGoods(dto);
+        return reviewService.reviewGoods(dto);
     }
 
     @GetMapping
     public List<GoodsReviewDto> getAllReviews() {
-        return service.getAllReviews();
+        return reviewService.getAll();
     }
 }
 
 
 ---
 
-8. Sample JSON Input for Testing
+10. Liquibase XML (goods_review table)
 
-Approve Goods
+<changeSet id="2025-04-16-1" author="system">
+    <createTable tableName="goods_review">
+        <column name="id" type="BIGINT" autoIncrement="true">
+            <constraints primaryKey="true" nullable="false"/>
+        </column>
+        <column name="status" type="VARCHAR(50)">
+            <constraints nullable="false"/>
+        </column>
+        <column name="comment" type="VARCHAR(500)"/>
+        <column name="review_date" type="TIMESTAMP"/>
+        <column name="goods_id" type="BIGINT">
+            <constraints nullable="false" foreignKeyName="fk_goods_review_goods" references="goods(id)"/>
+        </column>
+    </createTable>
+</changeSet>
+
+
+
+Here are 10 sample JSON inputs for Day 5: Quality Check (GoodsReview), covering both approval and rejection cases.
+
+
+---
+
+1. Approve (Comment Optional)
 
 {
   "goodsId": 1,
   "status": "APPROVED",
-  "comment": "Looks good"
+  "comment": "Looks good."
 }
 
-Reject Goods
+2. Reject (Comment Required)
 
 {
   "goodsId": 2,
   "status": "REJECTED",
-  "comment": "Packaging damaged"
+  "comment": "Packaging is damaged."
 }
 
-Let me know if you want the Liquibase XML to create the goods_review table as well.
+3. Approve (No Comment)
 
-Here is the Liquibase XML for the goods_review table, based on the GoodsReview entity:
+{
+  "goodsId": 3,
+  "status": "APPROVED",
+  "comment": ""
+}
 
-<?xml version="1.0" encoding="UTF-8"?>
+4. Reject
 
-<databaseChangeLog
-    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+{
+  "goodsId": 4,
+  "status": "REJECTED",
+  "comment": "Expired product received."
+}
 
-    <!-- ChangeSet for creating 'goods_review' table -->
-    <changeSet author="yourname" id="1" dbms="postgresql, mysql, h2, mssql">
-        <createTable tableName="goods_review">
-            <column name="id" type="bigint">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="status" type="varchar(255)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="comment" type="text"/>
-            <column name="goods_id" type="bigint">
-                <constraints nullable="false"/>
-            </column>
+5. Approve
 
-            <!-- Foreign Key Constraint -->
-            <addForeignKeyConstraint 
-                baseTableName="goods_review"
-                baseColumnNames="goods_id"
-                referencedTableName="goods"
-                referencedColumnNames="id"
-                constraintName="fk_goods_review_goods"
-                onDelete="CASCADE"/>
-        </createTable>
-    </changeSet>
+{
+  "goodsId": 5,
+  "status": "APPROVED",
+  "comment": "Passed visual inspection."
+}
 
-    <!-- ChangeSet for adding sample data (Optional) -->
-    <changeSet author="yourname" id="2" dbms="postgresql, mysql, h2, mssql">
-        <insert tableName="goods_review">
-            <column name="status" value="PENDING"/>
-            <column name="comment" value=""/>
-            <column name="goods_id" value="1"/>
-        </insert>
-        <insert tableName="goods_review">
-            <column name="status" value="APPROVED"/>
-            <column name="comment" value="Approved after checking"/>
-            <column name="goods_id" value="2"/>
-        </insert>
-    </changeSet>
+6. Reject
 
-</databaseChangeLog>
+{
+  "goodsId": 6,
+  "status": "REJECTED",
+  "comment": "Incorrect quantity in shipment."
+}
 
-Explanation:
+7. Approve
 
-createTable: This creates the goods_review table with columns:
+{
+  "goodsId": 7,
+  "status": "APPROVED",
+  "comment": "All fine."
+}
 
-id: Primary key (auto-generated).
+8. Reject
 
-status: The status of the review (APPROVED, REJECTED, or PENDING).
+{
+  "goodsId": 8,
+  "status": "REJECTED",
+  "comment": "Broken seal found on items."
+}
 
-comment: Optional comment for rejection or approval.
+9. Approve
 
-goods_id: Foreign key referencing the goods table.
+{
+  "goodsId": 9,
+  "status": "APPROVED",
+  "comment": "Everything in order."
+}
 
+10. Reject
 
-addForeignKeyConstraint: This creates the foreign key relationship between goods_review.goods_id and goods.id with a CASCADE delete policy (deletes the review when the associated goods are deleted).
+{
+  "goodsId": 10,
+  "status": "REJECTED",
+  "comment": "Mismatched batch number."
+}
 
-Sample Data: The insert statements are optional. They add sample data for testing purposes.
+Let me know if you want me to generate mock Goods data or test endpoints for these!
 
 
-You can use this XML with Liquibase to create the goods_review table and optionally insert sample data. Let me know if you need any more adjustments!
+
+
+Here are 10 sample JSON inputs to test your /api/goods POST endpoint — these goods are in PENDING status and ready for review by the Logistics Coordinator.
+
+
+---
+
+1. Good: Milk Pack
+
+{
+  "name": "Milk Pack",
+  "quantity": 50,
+  "unitOfMeasure": "Liters",
+  "location": "Storage Room A",
+  "expiryDate": "2025-05-10",
+  "acquisitionDate": "2025-04-15",
+  "minimumStockLevel": 20,
+  "price": 1.5,
+  "supplier": "DairyFresh Ltd",
+  "status": "PENDING",
+  "userId": 1,
+  "categoryId": 1
+}
+
+2. Good: Rice Bag
+
+{
+  "name": "Rice Bag",
+  "quantity": 100,
+  "unitOfMeasure": "Kg",
+  "location": "Bin B2",
+  "expiryDate": "2026-01-01",
+  "acquisitionDate": "2025-04-10",
+  "minimumStockLevel": 30,
+  "price": 0.9,
+  "supplier": "Agro World",
+  "status": "PENDING",
+  "userId": 2,
+  "categoryId": 2
+}
+
+3. Good: Canned Beans
+
+{
+  "name": "Canned Beans",
+  "quantity": 75,
+  "unitOfMeasure": "Cans",
+  "location": "Aisle 3",
+  "expiryDate": "2025-11-20",
+  "acquisitionDate": "2025-04-12",
+  "minimumStockLevel": 15,
+  "price": 0.8,
+  "supplier": "Beanie Corp",
+  "status": "PENDING",
+  "userId": 3,
+  "categoryId": 3
+}
+
+4. Good: Wheat Flour
+
+{
+  "name": "Wheat Flour",
+  "quantity": 120,
+  "unitOfMeasure": "Kg",
+  "location": "Warehouse C",
+  "expiryDate": "2026-03-01",
+  "acquisitionDate": "2025-04-14",
+  "minimumStockLevel": 40,
+  "price": 0.6,
+  "supplier": "FarmField",
+  "status": "PENDING",
+  "userId": 1,
+  "categoryId": 2
+}
+
+5. Good: Bottled Water
+
+{
+  "name": "Bottled Water",
+  "quantity": 200,
+  "unitOfMeasure": "Bottles",
+  "location": "Shelf 5",
+  "expiryDate": "2026-07-10",
+  "acquisitionDate": "2025-04-16",
+  "minimumStockLevel": 50,
+  "price": 0.5,
+  "supplier": "ClearStream",
+  "status": "PENDING",
+  "userId": 2,
+  "categoryId": 4
+}
+
+6. Good: Eggs Tray
+
+{
+  "name": "Eggs Tray",
+  "quantity": 30,
+  "unitOfMeasure": "Trays",
+  "location": "Cold Storage",
+  "expiryDate": "2025-04-25",
+  "acquisitionDate": "2025-04-14",
+  "minimumStockLevel": 10,
+  "price": 2.0,
+  "supplier": "FarmEgg",
+  "status": "PENDING",
+  "userId": 3,
+  "categoryId": 1
+}
+
+7. Good: Soap Bars
+
+{
+  "name": "Soap Bars",
+  "quantity": 150,
+  "unitOfMeasure": "Bars",
+  "location": "Rack 7",
+  "expiryDate": "2027-01-01",
+  "acquisitionDate": "2025-04-13",
+  "minimumStockLevel": 30,
+  "price": 0.4,
+  "supplier": "CleanWell",
+  "status": "PENDING",
+  "userId": 1,
+  "categoryId": 5
+}
+
+8. Good: Tomato Sauce
+
+{
+  "name": "Tomato Sauce",
+  "quantity": 60,
+  "unitOfMeasure": "Bottles",
+  "location": "Shelf A1",
+  "expiryDate": "2025-10-15",
+  "acquisitionDate": "2025-04-11",
+  "minimumStockLevel": 20,
+  "price": 1.2,
+  "supplier": "Saucy Foods",
+  "status": "PENDING",
+  "userId": 2,
+  "categoryId": 3
+}
+
+9. Good: Sugar Pack
+
+{
+  "name": "Sugar Pack",
+  "quantity": 90,
+  "unitOfMeasure": "Kg",
+  "location": "Bin 2",
+  "expiryDate": "2026-06-01",
+  "acquisitionDate": "2025-04-09",
+  "minimumStockLevel": 25,
+  "price": 0.7,
+  "supplier": "SweetRoot",
+  "status": "PENDING",
+  "userId": 3,
+  "categoryId": 2
+}
+
+10. Good: Frozen Peas
+
+{
+  "name": "Frozen Peas",
+  "quantity": 40,
+  "unitOfMeasure": "Packets",
+  "location": "Freezer Unit 1",
+  "expiryDate": "2025-06-30",
+  "acquisitionDate": "2025-04-10",
+  "minimumStockLevel": 10,
+  "price": 1.8,
+  "supplier": "GreenHarvest",
+  "status": "PENDING",
+  "userId": 1,
+  "categoryId": 1
+}
+
+
+---
+
+Let me know if you want mock data for Inventory or Reporting next (Day 6 or 7).
+Here’s the complete backend structure and full source code for Day 6: Inventory Update using Spring Boot and Liquibase (H2 database). This includes:
+
+Entity, DTO, Repository, Service, Controller for Inventory
+
+Updates to Goods entity (if needed)
+
+Liquibase changelog for the Inventory table
+
+JSON input examples
+
+
+
+---
+
+1. Backend Folder Structure
+
+src/main/java/org/policy/
+│
+├── controller/
+│   ├── InventoryController.java
+│
+├── dto/
+│   ├── InventoryDto.java
+│
+├── entity/
+│   ├── Inventory.java
+│   └── Goods.java        // (updated if needed)
+│
+├── repository/
+│   ├── InventoryRepository.java
+│
+├── service/
+│   ├── InventoryService.java
+│
+└── enums/
+    ├── GoodsStatus.java
+
+
+---
+
+2. Entity: Inventory.java
+
+package org.policy.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "inventory")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class Inventory {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private int quantity;
+
+    private String warehouseLocation;
+
+    private LocalDate dateAdded;
+
+    @OneToOne
+    @JoinColumn(name = "goods_id", unique = true)
+    private Goods goods;
+}
+
+
+---
+
+3. DTO: InventoryDto.java
+
+package org.policy.dto;
+
+import lombok.*;
+
+import java.time.LocalDate;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class InventoryDto {
+    private Long id;
+    private Long goodsId;
+    private int quantity;
+    private String warehouseLocation;
+    private LocalDate dateAdded;
+}
+
+
+---
+
+4. Repository: InventoryRepository.java
+
+package org.policy.repository;
+
+import org.policy.entity.Inventory;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface InventoryRepository extends JpaRepository<Inventory, Long> {
+    Optional<Inventory> findByGoodsId(Long goodsId);
+}
+
+
+---
+
+5. Service: InventoryService.java
+
+package org.policy.service;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.InventoryDto;
+import org.policy.entity.Goods;
+import org.policy.entity.Inventory;
+import org.policy.enums.GoodsStatus;
+import org.policy.repository.GoodsRepository;
+import org.policy.repository.InventoryRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class InventoryService {
+
+    private final InventoryRepository inventoryRepository;
+    private final GoodsRepository goodsRepository;
+
+    public InventoryDto addToInventory(Long goodsId, String warehouseLocation) {
+        Goods goods = goodsRepository.findById(goodsId)
+                .orElseThrow(() -> new RuntimeException("Goods not found"));
+
+        if (!GoodsStatus.APPROVED.equals(goods.getStatus())) {
+            throw new RuntimeException("Goods must be approved before adding to inventory.");
+        }
+
+        if (inventoryRepository.findByGoodsId(goodsId).isPresent()) {
+            throw new RuntimeException("This good is already in the inventory.");
+        }
+
+        Inventory inventory = new Inventory();
+        inventory.setGoods(goods);
+        inventory.setQuantity(goods.getQuantity());
+        inventory.setWarehouseLocation(warehouseLocation);
+        inventory.setDateAdded(LocalDate.now());
+
+        inventoryRepository.save(inventory);
+
+        return mapToDto(inventory);
+    }
+
+    public List<InventoryDto> getAll() {
+        return inventoryRepository.findAll()
+                .stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+    }
+
+    private InventoryDto mapToDto(Inventory inventory) {
+        return new InventoryDto(
+                inventory.getId(),
+                inventory.getGoods().getId(),
+                inventory.getQuantity(),
+                inventory.getWarehouseLocation(),
+                inventory.getDateAdded()
+        );
+    }
+}
+
+
+---
+
+6. Controller: InventoryController.java
+
+package org.policy.controller;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.InventoryDto;
+import org.policy.service.InventoryService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/inventory")
+@RequiredArgsConstructor
+public class InventoryController {
+
+    private final InventoryService inventoryService;
+
+    @PostMapping("/add/{goodsId}")
+    public InventoryDto addToInventory(
+            @PathVariable Long goodsId,
+            @RequestParam(required = false) String warehouseLocation) {
+        return inventoryService.addToInventory(goodsId, warehouseLocation);
+    }
+
+    @GetMapping
+    public List<InventoryDto> getAll() {
+        return inventoryService.getAll();
+    }
+}
+
+
+---
+
+7. Liquibase XML: db.changelog-6.0-inventory.xml
+
+<changeSet id="6" author="dev">
+    <createTable tableName="inventory">
+        <column name="id" type="BIGINT" autoIncrement="true">
+            <constraints primaryKey="true"/>
+        </column>
+        <column name="quantity" type="INT"/>
+        <column name="warehouse_location" type="VARCHAR(255)"/>
+        <column name="date_added" type="DATE"/>
+        <column name="goods_id" type="BIGINT" unique="true">
+            <constraints nullable="false"/>
+        </column>
+    </createTable>
+
+    <addForeignKeyConstraint 
+        baseColumnNames="goods_id"
+        baseTableName="inventory"
+        constraintName="fk_inventory_goods"
+        referencedColumnNames="id"
+        referencedTableName="goods"/>
+</changeSet>
+
+
+---
+
+8. Update to Goods.java (if not present)
+
+Ensure status field is there:
+
+@Enumerated(EnumType.STRING)
+@Column(length = 20)
+private GoodsStatus status;
+
+
+---
+
+9. Enum: GoodsStatus.java
+
+package org.policy.enums;
+
+public enum GoodsStatus {
+    PENDING,
+    APPROVED,
+    REJECTED
+}
+
+
+---
+
+10. Sample JSON Inputs
+
+Add Approved Goods to Inventory (POST)
+
+POST /api/inventory/add/1?warehouseLocation=MainWarehouse
+
+Get All Inventory (GET)
+
+GET /api/inventory
+
+
+---
+
+Would you like the frontend structure and code for displaying the inventory as well (Admin only view)?
+
+
+---
+
+
+Here are sample JSON inputs and responses you can use to test the Inventory APIs for Day 6: Inventory Update feature:
+
+
+---
+
+1. Add Approved Goods to Inventory
+
+Request
+(Use this as a POST request — no request body needed, just path and query parameter)
+
+POST /api/inventory/add/1?warehouseLocation=MainWarehouse
+
+Response
+
+{
+  "id": 1,
+  "goodsId": 1,
+  "quantity": 100,
+  "warehouseLocation": "MainWarehouse",
+  "dateAdded": "2025-04-16"
+}
+
+
+---
+
+2. Get All Inventory
+
+Request
+
+GET /api/inventory
+
+Response
+
+[
+  {
+    "id": 1,
+    "goodsId": 1,
+    "quantity": 100,
+    "warehouseLocation": "MainWarehouse",
+    "dateAdded": "2025-04-16"
+  },
+  {
+    "id": 2,
+    "goodsId": 3,
+    "quantity": 50,
+    "warehouseLocation": "BackupStore",
+    "dateAdded": "2025-04-17"
+  }
+]
+
+
+---
+
+3. Error — Trying to Add Unapproved Goods
+
+Request
+
+POST /api/inventory/add/2?warehouseLocation=MainWarehouse
+
+Response
+
+{
+  "timestamp": "2025-04-16T15:22:33.456",
+  "status": 500,
+  "error": "Internal Server Error",
+  "message": "Goods must be approved before adding to inventory.",
+  "path": "/api/inventory/add/2"
+}
+
+
+---
+
+4. Error — Duplicate Entry
+
+Request
+
+POST /api/inventory/add/1?warehouseLocation=MainWarehouse
+
+Response
+
+{
+  "timestamp": "2025-04-16T15:23:14.122",
+  "status": 500,
+  "error": "Internal Server Error",
+  "message": "This good is already in the inventory.",
+  "path": "/api/inventory/add/1"
+}
+
+
+---
+
+Let me know if you also want to generate test goods data with status APPROVED so you can check these in your H2 console.
+
+Sure! Here's a brief flow of how the backend for Day 6: Inventory Update works in your Inventory Management Module (Spring Boot + H2 + Liquibase), including folder structure, files, and function responsibilities.
+
+
+---
+
+1. Folder & File Structure
+
+src/main/java/org/policy
+│
+├── controller
+│   └── InventoryController.java
+│
+├── entity
+│   ├── Goods.java
+│   └── Inventory.java
+│
+├── repository
+│   ├── GoodsRepository.java
+│   └── InventoryRepository.java
+│
+├── service
+│   ├── InventoryService.java
+│   └── GoodsService.java  // Used if needed to fetch/update goods
+│
+├── dto
+│   └── InventoryDTO.java
+│
+└── enums
+    └── GoodsStatus.java
+
+
+---
+
+2. How It Works
+
+Step 1: User Registers Goods
+
+Goods are stored with status PENDING via /api/goods (already done in Day 3).
+
+
+Step 2: Logistics Coordinator Reviews Goods
+
+Via /api/goods-review, they approve/reject goods.
+
+Status changes to APPROVED or REJECTED.
+
+
+Step 3: Approved Goods are Inserted into Inventory
+
+InventoryController.java
+
+@PostMapping("/add/{goodsId}")
+public ResponseEntity<InventoryDTO> addToInventory(
+        @PathVariable Long goodsId,
+        @RequestParam(required = false) String warehouseLocation) {
+    return ResponseEntity.ok(inventoryService.addApprovedGoods(goodsId, warehouseLocation));
+}
+
+This handles requests to add approved goods into inventory.
+
+
+InventoryService.java
+
+public InventoryDTO addApprovedGoods(Long goodsId, String warehouseLocation) {
+    // 1. Check if goods exists and is APPROVED
+    // 2. Check if already exists in inventory
+    // 3. Create inventory entry with current date
+}
+
+InventoryRepository.java
+
+boolean existsByGoods(Goods goods);  // Used to prevent duplicates
+
+Inventory.java (Entity)
+
+@ManyToOne
+@JoinColumn(name = "goods_id", nullable = false)
+private Goods goods;
+
+private Integer quantity;
+private String warehouseLocation;
+private LocalDate dateAdded;
+
+
+---
+
+3. Liquibase
+
+XML file (db.changelog-6-inventory.xml) defines the inventory table.
+
+
+
+---
+
+4. When Admin Opens Inventory List
+
+They call GET /api/inventory (Admin-only access).
+
+It fetches all inventory records using InventoryRepository.findAll().
+
+
+
+---
+
+5. Important Flow Conditions
+
+Only APPROVED goods can be inserted.
+
+Duplicate inventory entries for the same goods are not allowed.
+
+dateAdded is system generated (LocalDate.now()).
+
+warehouseLocation is optional, passed via query parameter.
+
+
+
+---
+
+Let me know if you'd like this visualized in a diagram or flowchart too!
+
+
+Would you like me to generate test JSON input for POST /api/goods-review now?
