@@ -1,35 +1,27 @@
-Here is the complete backend structure and full updated source code for Day 10: Advanced Filtering and Pagination in your Inventory Management Module using Spring Boot, with support for:
-
-Filtering: by GoodsStatus (enum), category, warehouse, and date range
-
-Pagination
-
-Sorting: by date, quantity, etc.
-
+Absolutely! Here's your Day 10: Backend structure and full updated source code for implementing Advanced Filtering, Pagination, and Sorting in your Inventory Management Module using Spring Boot. All new files created specifically for Day 10 filtering include the word filter in their filenames.
 
 
 ---
 
-Backend Folder Structure
+Backend Folder Structure (Day 10 Specific)
 
 src/main/java/org/policy/
 ├── controller/
-│   └── InventoryController.java
-├── service/
-│   └── InventoryService.java
+│   └── InventoryFilterController.java        <-- Day 10
 ├── dto/
-│   ├── InventoryFilterRequest.java
-│   └── InventoryResponseDto.java
-├── repository/
-│   └── InventoryRepository.java
+│   ├── InventoryFilterRequestDto.java        <-- Day 10
+│   └── InventoryFilterResponseDto.java       <-- Day 10
 ├── entity/
-│   ├── Inventory.java
-│   └── GoodsStatus.java
+│   └── GoodsStatus.java                      <-- Shared enum
+├── repository/
+│   └── InventoryRepository.java              <-- Modified for Day 10
+├── service/
+│   └── InventoryFilterService.java           <-- Day 10
 
 
 ---
 
-1. GoodsStatus.java (Enum)
+1. GoodsStatus.java
 
 package org.policy.entity;
 
@@ -42,7 +34,7 @@ public enum GoodsStatus {
 
 ---
 
-2. InventoryFilterRequest.java
+2. InventoryFilterRequestDto.java
 
 package org.policy.dto;
 
@@ -52,7 +44,7 @@ import org.policy.entity.GoodsStatus;
 import java.time.LocalDate;
 
 @Data
-public class InventoryFilterRequest {
+public class InventoryFilterRequestDto {
     private GoodsStatus status;
     private String category;
     private String warehouse;
@@ -67,7 +59,7 @@ public class InventoryFilterRequest {
 
 ---
 
-3. InventoryResponseDto.java
+3. InventoryFilterResponseDto.java
 
 package org.policy.dto;
 
@@ -78,7 +70,7 @@ import java.time.LocalDate;
 
 @Data
 @AllArgsConstructor
-public class InventoryResponseDto {
+public class InventoryFilterResponseDto {
     private String goodsName;
     private String categoryName;
     private Integer quantity;
@@ -104,32 +96,30 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long>, Jpa
 
 ---
 
-5. InventoryService.java
+5. InventoryFilterService.java
 
 package org.policy.service;
 
 import lombok.RequiredArgsConstructor;
-import org.policy.dto.InventoryFilterRequest;
-import org.policy.dto.InventoryResponseDto;
+import org.policy.dto.InventoryFilterRequestDto;
+import org.policy.dto.InventoryFilterResponseDto;
 import org.policy.entity.Inventory;
-import org.policy.entity.GoodsStatus;
 import org.policy.repository.InventoryRepository;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import jakarta.persistence.criteria.Join;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class InventoryService {
+public class InventoryFilterService {
 
     private final InventoryRepository inventoryRepository;
 
-    public Page<InventoryResponseDto> filterInventory(InventoryFilterRequest request) {
+    public Page<InventoryFilterResponseDto> filterInventory(InventoryFilterRequestDto request) {
         Specification<Inventory> spec = (root, query, cb) -> {
             List<javax.persistence.criteria.Predicate> predicates = new ArrayList<>();
 
@@ -156,7 +146,7 @@ public class InventoryService {
         Sort sort = Sort.by(Sort.Direction.fromString(request.getSortDirection()), request.getSortBy());
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
 
-        return inventoryRepository.findAll(spec, pageable).map(i -> new InventoryResponseDto(
+        return inventoryRepository.findAll(spec, pageable).map(i -> new InventoryFilterResponseDto(
                 i.getGoods().getName(),
                 i.getGoods().getCategory().getName(),
                 i.getQuantity(),
@@ -170,47 +160,112 @@ public class InventoryService {
 
 ---
 
-6. InventoryController.java
+6. InventoryFilterController.java
 
 package org.policy.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.policy.dto.InventoryFilterRequest;
-import org.policy.dto.InventoryResponseDto;
-import org.policy.service.InventoryService;
+import org.policy.dto.InventoryFilterRequestDto;
+import org.policy.dto.InventoryFilterResponseDto;
+import org.policy.service.InventoryFilterService;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/inventory")
+@RequestMapping("/api/inventory/filter")
 @RequiredArgsConstructor
-public class InventoryController {
+public class InventoryFilterController {
 
-    private final InventoryService inventoryService;
+    private final InventoryFilterService inventoryFilterService;
 
-    @PostMapping("/filter")
-    public Page<InventoryResponseDto> filterInventory(@RequestBody InventoryFilterRequest request) {
-        return inventoryService.filterInventory(request);
+    @PostMapping
+    public Page<InventoryFilterResponseDto> filterInventory(@RequestBody InventoryFilterRequestDto request) {
+        return inventoryFilterService.filterInventory(request);
     }
 }
 
 
 ---
 
-Liquibase Reminder
+Liquibase Note
 
-Ensure your inventory table and related goods, category fields are correctly created in H2 via Liquibase.
+Ensure your existing Liquibase changelogs for inventory, goods, category, and warehouse tables include:
+
+goods.status (enum field)
+
+goods.category_id
+
+inventory.warehouse_location
+
+inventory.date_added
+
 
 
 ---
 
-Let me know if you want:
-
-Angular frontend filters + pagination UI
-
-Full Liquibase changesets for goods, category, and inventory
-
-Test data for H2
+Let me know if you want the frontend filters and pagination UI in Angular or updated Liquibase changelog files as well!
 
 
-Or if you'd like Day 11 planning!
+
+Got it — you're seeing a red error on jakarta.persistence.criteria.* (especially on Join, Predicate, or Specification). This is due to missing dependencies in your pom.xml.
+
+Let’s fix it step by step:
+
+
+---
+
+✅ 1. Add the Required Dependency in pom.xml
+
+You need the Jakarta Persistence API and Spring Data JPA support for Specifications.
+
+Please make sure your pom.xml contains the following dependencies:
+
+<!-- JPA API (needed for CriteriaBuilder, Predicate, Join, etc.) -->
+<dependency>
+    <groupId>jakarta.persistence</groupId>
+    <artifactId>jakarta.persistence-api</artifactId>
+    <version>3.1.0</version>
+</dependency>
+
+<!-- Spring Data JPA (required for JpaSpecificationExecutor, Specification) -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+
+Then reload Maven by right-clicking your project in IntelliJ or using:
+
+./mvnw clean install
+
+
+---
+
+✅ 2. Use Correct Imports in InventoryFilterService
+
+Make sure these are your imports:
+
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Join;
+
+And not anything like:
+
+import javax.persistence.criteria.Predicate; // ❌ Don't use this if you're on Jakarta 3+
+
+
+---
+
+✅ 3. IDE Red Line Fix
+
+If it’s still red after adding dependencies:
+
+Right-click project > Maven > Reimport
+
+Invalidate caches and restart (File > Invalidate Caches / Restart)
+
+
+
+---
+
+If you want, I can generate a full working pom.xml for you including H2, Liquibase, Spring Boot, and JPA — just say the word!
+
