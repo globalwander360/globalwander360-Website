@@ -1,69 +1,50 @@
-Here is the complete backend source code and structure for Day 8: Generate Excel Reports (Admin) using Spring Boot and Apache POI for Excel generation. This includes:
-
-Inventory Summary (Sheet 1)
-
-Rejected Goods with comments (Sheet 2)
-
+Here is the complete backend structure and full source code for Day 8: Excel Report Generation (Admin) using Spring Boot and Apache POI, with H2 and Liquibase setup:
 
 
 ---
 
-1. Folder Structure
+Backend Folder Structure
 
 src/main/java/org/policy/
 ├── controller/
-│   └── ReportDownloadController.java
+│   └── ExcelReportController.java
 ├── service/
-│   └── ReportDownloadService.java
+│   └── ExcelReportService.java
+├── dto/
+│   └── ExcelReportDto.java
 ├── repository/
 │   └── InventoryRepository.java
 │   └── GoodsReviewRepository.java
-├── dto/
-│   └── ExcelReportDto.java
-├── util/
-│   └── ExcelGenerator.java
+├── entity/
+│   └── Inventory.java
+│   └── GoodsReview.java
 
 
 ---
 
-2. DTO Class
-
-ExcelReportDto.java
+1. ExcelReportDto.java
 
 package org.policy.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
+@Data
+@AllArgsConstructor
 public class ExcelReportDto {
-
-    @Data
-    @AllArgsConstructor
-    public static class InventorySummary {
-        private String goodsName;
-        private int quantity;
-        private String warehouseLocation;
-        private LocalDateTime dateAdded;
-    }
-
-    @Data
-    @AllArgsConstructor
-    public static class RejectedGoods {
-        private String goodsName;
-        private String categoryName;
-        private String rejectionComment;
-        private LocalDateTime reviewDate;
-    }
+    private String goodsName;
+    private String categoryName;
+    private Integer quantity;
+    private String warehouseLocation;
+    private LocalDate dateAdded;
 }
 
 
 ---
 
-3. Repositories
-
-InventoryRepository.java
+2. InventoryRepository.java
 
 package org.policy.repository;
 
@@ -76,16 +57,18 @@ import java.util.List;
 
 public interface InventoryRepository extends CrudRepository<Inventory, Long> {
 
-    @Query("SELECT new org.policy.dto.ExcelReportDto.InventorySummary(g.name, i.quantity, i.warehouseLocation, i.dateAdded) " +
-           "FROM Inventory i JOIN i.goods g")
-    List<ExcelReportDto.InventorySummary> fetchInventorySummary();
+    @Query("SELECT new org.policy.dto.ExcelReportDto(g.name, c.name, i.quantity, i.warehouseLocation, i.dateAdded) " +
+           "FROM Inventory i JOIN i.goods g JOIN g.category c")
+    List<ExcelReportDto> getInventorySummary();
 }
 
-GoodsReviewRepository.java
+
+---
+
+3. GoodsReviewRepository.java
 
 package org.policy.repository;
 
-import org.policy.dto.ExcelReportDto;
 import org.policy.entity.GoodsReview;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -94,17 +77,14 @@ import java.util.List;
 
 public interface GoodsReviewRepository extends CrudRepository<GoodsReview, Long> {
 
-    @Query("SELECT new org.policy.dto.ExcelReportDto.RejectedGoods(g.name, c.name, gr.comment, gr.reviewDate) " +
-           "FROM GoodsReview gr JOIN gr.goods g JOIN g.category c WHERE gr.status = 'REJECTED'")
-    List<ExcelReportDto.RejectedGoods> fetchRejectedGoods();
+    @Query("SELECT r FROM GoodsReview r WHERE r.status = 'REJECTED'")
+    List<GoodsReview> findRejectedGoodsWithComments();
 }
 
 
 ---
 
-4. Service
-
-ReportDownloadService.java
+4. ExcelReportService.java
 
 package org.policy.service;
 
@@ -112,683 +92,125 @@ import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.policy.dto.ExcelReportDto;
-import org.policy.repository.InventoryRepository;
+import org.policy.entity.GoodsReview;
 import org.policy.repository.GoodsReviewRepository;
+import org.policy.repository.InventoryRepository;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class ReportDownloadService {
+public class ExcelReportService {
 
-    private final InventoryRepository inventoryRepo;
-    private final GoodsReviewRepository goodsReviewRepo;
+    private final InventoryRepository inventoryRepository;
+    private final GoodsReviewRepository reviewRepository;
 
-    public InputStream generateExcelReport() throws Exception {
-        List<ExcelReportDto.InventorySummary> inventoryList = inventoryRepo.fetchInventorySummary();
-        List<ExcelReportDto.RejectedGoods> rejectedGoodsList = goodsReviewRepo.fetchRejectedGoods();
+    public ByteArrayInputStream generateExcelReport() throws Exception {
+        List<ExcelReportDto> inventoryList = inventoryRepository.getInventorySummary();
+        List<GoodsReview> rejectedGoods = reviewRepository.findRejectedGoodsWithComments();
 
-        Workbook workbook = new XSSFWorkbook();
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            // Sheet 1: Inventory Summary
+            Sheet summarySheet = workbook.createSheet("Inventory Summary");
+            Row headerRow = summarySheet.createRow(0);
+            String[] headers = {"Goods Name", "Category", "Quantity", "Warehouse Location", "Date Added"};
 
-        Sheet sheet1 = workbook.createSheet("Inventory Summary");
-        Row header1 = sheet1.createRow(0);
-        header1.createCell(0).setCellValue("Goods Name");
-        header1.createCell(1).setCellValue("Quantity");
-        header1.createCell(2).setCellValue("Warehouse Location");
-        header1.createCell(3).setCellValue("Date Added");
+            for (int i = 0; i < headers.length; i++) {
+                headerRow.createCell(i).setCellValue(headers[i]);
+            }
 
-        int row1 = 1;
-        for (ExcelReportDto.InventorySummary summary : inventoryList) {
-            Row row = sheet1.createRow(row1++);
-            row.createCell(0).setCellValue(summary.getGoodsName());
-            row.createCell(1).setCellValue(summary.getQuantity());
-            row.createCell(2).setCellValue(summary.getWarehouseLocation());
-            row.createCell(3).setCellValue(summary.getDateAdded().toString());
+            int rowIdx = 1;
+            for (ExcelReportDto item : inventoryList) {
+                Row row = summarySheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(item.getGoodsName());
+                row.createCell(1).setCellValue(item.getCategoryName());
+                row.createCell(2).setCellValue(item.getQuantity());
+                row.createCell(3).setCellValue(item.getWarehouseLocation());
+                row.createCell(4).setCellValue(item.getDateAdded().toString());
+            }
+
+            // Sheet 2: Rejected Goods
+            Sheet rejectedSheet = workbook.createSheet("Rejected Goods");
+            Row rejectedHeader = rejectedSheet.createRow(0);
+            String[] rejectHeaders = {"Goods ID", "Comment", "Review Date"};
+
+            for (int i = 0; i < rejectHeaders.length; i++) {
+                rejectedHeader.createCell(i).setCellValue(rejectHeaders[i]);
+            }
+
+            rowIdx = 1;
+            for (GoodsReview r : rejectedGoods) {
+                Row row = rejectedSheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(r.getGoods().getId());
+                row.createCell(1).setCellValue(r.getComment());
+                row.createCell(2).setCellValue(r.getReviewDate().toString());
+            }
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
         }
-
-        Sheet sheet2 = workbook.createSheet("Rejected Goods");
-        Row header2 = sheet2.createRow(0);
-        header2.createCell(0).setCellValue("Goods Name");
-        header2.createCell(1).setCellValue("Category");
-        header2.createCell(2).setCellValue("Comment");
-        header2.createCell(3).setCellValue("Review Date");
-
-        int row2 = 1;
-        for (ExcelReportDto.RejectedGoods rejected : rejectedGoodsList) {
-            Row row = sheet2.createRow(row2++);
-            row.createCell(0).setCellValue(rejected.getGoodsName());
-            row.createCell(1).setCellValue(rejected.getCategoryName());
-            row.createCell(2).setCellValue(rejected.getRejectionComment());
-            row.createCell(3).setCellValue(rejected.getReviewDate().toString());
-        }
-
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        workbook.write(out);
-        workbook.close();
-
-        return new ByteArrayInputStream(out.toByteArray());
     }
 }
 
 
 ---
 
-5. Controller
-
-ReportDownloadController.java
+5. ExcelReportController.java
 
 package org.policy.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.policy.service.ReportDownloadService;
+import org.policy.service.ExcelReportService;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/reports/download")
+@RequestMapping("/api/excel-report")
 @RequiredArgsConstructor
-public class ReportDownloadController {
+public class ExcelReportController {
 
-    private final ReportDownloadService reportDownloadService;
+    private final ExcelReportService reportService;
 
-    @GetMapping("/excel")
-    public ResponseEntity<byte[]> downloadExcelReport() throws Exception {
-        byte[] bytes = reportDownloadService.generateExcelReport().readAllBytes();
+    @GetMapping("/download")
+    public ResponseEntity<InputStreamResource> downloadExcelReport() throws Exception {
+        var stream = reportService.generateExcelReport();
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=inventory_report.xlsx")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=report.xlsx")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(bytes);
+                .body(new InputStreamResource(stream));
     }
 }
 
 
 ---
 
-6. Dependencies (Maven)
-
-Make sure you have Apache POI:
-
-<dependency>
-    <groupId>org.apache.poi</groupId>
-    <artifactId>poi-ooxml</artifactId>
-    <version>5.2.3</version>
-</dependency>
-
-
----
-
-Would you like the Liquibase XML for creating the inventory and goods_review tables too?
-Here is the Liquibase changelog XML to create the required tables for Inventory and GoodsReview for your Day 8 backend reporting feature:
-
-
----
-
-1. db.changelog-day8.xml
-
-<?xml version="1.0" encoding="UTF-8"?>
-<databaseChangeLog
-        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
-
-    <!-- Inventory Table -->
-    <changeSet id="day8-001" author="dev">
-        <createTable tableName="inventory">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="goods_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_inventory_goods" referencedTableName="goods" referencedColumnNames="id"/>
-            </column>
-            <column name="quantity" type="INT"/>
-            <column name="warehouse_location" type="VARCHAR(255)"/>
-            <column name="date_added" type="TIMESTAMP"/>
-        </createTable>
-    </changeSet>
-
-    <!-- Goods Review Table -->
-    <changeSet id="day8-002" author="dev">
-        <createTable tableName="goods_review">
-            <column name="id" type="BIGINT" autoIncrement="true">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="goods_id" type="BIGINT">
-                <constraints nullable="false" foreignKeyName="fk_review_goods" referencedTableName="goods" referencedColumnNames="id"/>
-            </column>
-            <column name="status" type="VARCHAR(20)"/>
-            <column name="comment" type="VARCHAR(255)"/>
-            <column name="review_date" type="TIMESTAMP"/>
-        </createTable>
-    </changeSet>
-
-</databaseChangeLog>
-
-
----
-
-2. Include in Main Changelog
-
-Ensure this is included in your master or main changelog file:
-
-<include file="classpath:db/changelog/db.changelog-day8.xml"/>
-
-
----
-
-Let me know if you also need the updated Inventory and GoodsReview entity classes or if you're using them already!
-
-
-
-
-Here are the complete and updated Java entity classes for Inventory and GoodsReview, designed to match the Liquibase structure you’ve implemented:
-
-
----
-
-1. Inventory.java
-
-package org.policy.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-import java.time.LocalDateTime;
-
-@Entity
-@Table(name = "inventory")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class Inventory {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @OneToOne
-    @JoinColumn(name = "goods_id", nullable = false)
-    private Goods goods;
-
-    private Integer quantity;
-
-    @Column(name = "warehouse_location")
-    private String warehouseLocation;
-
-    @Column(name = "date_added")
-    private LocalDateTime dateAdded;
-}
-
-
----
-
-2. GoodsReview.java
-
-package org.policy.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-import java.time.LocalDateTime;
-
-@Entity
-@Table(name = "goods_review")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class GoodsReview {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @ManyToOne
-    @JoinColumn(name = "goods_id", nullable = false)
-    private Goods goods;
-
-    @Enumerated(EnumType.STRING)
-    private GoodsStatus status;
-
-    private String comment;
-
-    @Column(name = "review_date")
-    private LocalDateTime reviewDate;
-}
-
-
----
-
-3. GoodsStatus.java (Enum)
-
-If not already present:
-
-package org.policy.enums;
-
-public enum GoodsStatus {
-    APPROVED,
-    REJECTED,
-    PENDING
-}
-
-
----
-
-Let me know if you also need updated Repository, Service, or Controller classes, or if you’d like a sample POST/GET request body for JSON testing.
-
-
-
-Here’s the complete backend structure and full source code for Day 8: Generate Excel Reports with Excel export functionality including:
-
-Inventory Summary (Sheet 1)
-
-Rejected Goods with Comments (Sheet 2)
-
-
-
----
-
-Folder Structure:
-
-└── org.policy
-    ├── controller
-    │   └── ExcelReportController.java
-    ├── service
-    │   └── ExcelReportService.java
-    ├── dto
-    │   └── ExcelReportDto.java
-    ├── repository
-    │   └── ExcelReportRepository.java
-    └── util
-        └── ExcelGenerator.java
-
-
----
-
-1. ExcelReportDto.java
-
-package org.policy.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-
-@Data
-@AllArgsConstructor
-public class ExcelReportDto {
-    private String goodsName;
-    private String categoryName;
-    private String status;
-    private String comment;
-    private String warehouseLocation;
-    private Integer quantity;
-}
-
-
----
-
-2. ExcelReportRepository.java
-
-package org.policy.repository;
-
-import org.policy.dto.ExcelReportDto;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.Repository;
-
-import java.util.List;
-
-public interface ExcelReportRepository extends Repository<Object, Long> {
-
-    @Query("SELECT new org.policy.dto.ExcelReportDto(g.name, c.name, g.status, r.comment, i.warehouseLocation, i.quantity) " +
-           "FROM Inventory i JOIN i.goods g JOIN g.category c LEFT JOIN GoodsReview r ON r.goods.id = g.id " +
-           "WHERE g.status = 'APPROVED'")
-    List<ExcelReportDto> getInventorySummary();
-
-    @Query("SELECT new org.policy.dto.ExcelReportDto(g.name, c.name, g.status, r.comment, null, null) " +
-           "FROM GoodsReview r JOIN r.goods g JOIN g.category c " +
-           "WHERE r.status = 'REJECTED'")
-    List<ExcelReportDto> getRejectedGoods();
-}
-
-
----
-
-3. ExcelReportService.java
-
-package org.policy.service;
-
-import lombok.RequiredArgsConstructor;
-import org.policy.dto.ExcelReportDto;
-import org.policy.repository.ExcelReportRepository;
-import org.policy.util.ExcelGenerator;
-import org.springframework.stereotype.Service;
-
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.List;
-
-@Service
-@RequiredArgsConstructor
-public class ExcelReportService {
-
-    private final ExcelReportRepository repository;
-
-    public void exportExcel(HttpServletResponse response) throws IOException {
-        List<ExcelReportDto> inventory = repository.getInventorySummary();
-        List<ExcelReportDto> rejected = repository.getRejectedGoods();
-        ExcelGenerator.generateReport(inventory, rejected, response);
-    }
-}
-
-
----
-
-4. ExcelGenerator.java
-
-package org.policy.util;
-
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.policy.dto.ExcelReportDto;
-
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.List;
-
-public class ExcelGenerator {
-
-    public static void generateReport(List<ExcelReportDto> inventory, List<ExcelReportDto> rejected, HttpServletResponse response) throws IOException {
-        Workbook workbook = new XSSFWorkbook();
-
-        Sheet sheet1 = workbook.createSheet("Inventory Summary");
-        Sheet sheet2 = workbook.createSheet("Rejected Goods");
-
-        createHeader(sheet1);
-        createHeader(sheet2);
-
-        fillData(sheet1, inventory);
-        fillData(sheet2, rejected);
-
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=Inventory_Report.xlsx");
-
-        workbook.write(response.getOutputStream());
-        workbook.close();
-    }
-
-    private static void createHeader(Sheet sheet) {
-        Row header = sheet.createRow(0);
-        String[] titles = {"Goods Name", "Category", "Status", "Comment", "Warehouse Location", "Quantity"};
-        for (int i = 0; i < titles.length; i++) {
-            header.createCell(i).setCellValue(titles[i]);
-        }
-    }
-
-    private static void fillData(Sheet sheet, List<ExcelReportDto> data) {
-        int rowNum = 1;
-        for (ExcelReportDto dto : data) {
-            Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(dto.getGoodsName());
-            row.createCell(1).setCellValue(dto.getCategoryName());
-            row.createCell(2).setCellValue(dto.getStatus());
-            row.createCell(3).setCellValue(dto.getComment() != null ? dto.getComment() : "");
-            row.createCell(4).setCellValue(dto.getWarehouseLocation() != null ? dto.getWarehouseLocation() : "");
-            row.createCell(5).setCellValue(dto.getQuantity() != null ? dto.getQuantity() : 0);
-        }
-    }
-}
-
-
----
-
-5. ExcelReportController.java
-
-package org.policy.controller;
-
-import lombok.RequiredArgsConstructor;
-import org.policy.service.ExcelReportService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-
-@RestController
-@RequestMapping("/api/admin/excel-report")
-@RequiredArgsConstructor
-public class ExcelReportController {
-
-    private final ExcelReportService service;
-
-    @GetMapping
-    public void downloadExcel(HttpServletResponse response) throws IOException {
-        service.exportExcel(response);
-    }
-}
-
-
----
-
-6. Dependencies Required in pom.xml
-
-<dependency>
-    <groupId>org.apache.poi</groupId>
-    <artifactId>poi-ooxml</artifactId>
-    <version>5.2.2</version>
-</dependency>
-
-
----
-
-Let me know if you want the frontend Download button implementation too.
-
-Here’s the complete backend structure and full source code for Day 8: Generate Excel Reports with Excel export functionality including:
-
-Inventory Summary (Sheet 1)
-
-Rejected Goods with Comments (Sheet 2)
-
-
-
----
-
-Folder Structure:
-
-└── org.policy
-    ├── controller
-    │   └── ExcelReportController.java
-    ├── service
-    │   └── ExcelReportService.java
-    ├── dto
-    │   └── ExcelReportDto.java
-    ├── repository
-    │   └── ExcelReportRepository.java
-    └── util
-        └── ExcelGenerator.java
-
-
----
-
-1. ExcelReportDto.java
-
-package org.policy.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-
-@Data
-@AllArgsConstructor
-public class ExcelReportDto {
-    private String goodsName;
-    private String categoryName;
-    private String status;
-    private String comment;
-    private String warehouseLocation;
-    private Integer quantity;
-}
-
-
----
-
-2. ExcelReportRepository.java
-
-package org.policy.repository;
-
-import org.policy.dto.ExcelReportDto;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.Repository;
-
-import java.util.List;
-
-public interface ExcelReportRepository extends Repository<Object, Long> {
-
-    @Query("SELECT new org.policy.dto.ExcelReportDto(g.name, c.name, g.status, r.comment, i.warehouseLocation, i.quantity) " +
-           "FROM Inventory i JOIN i.goods g JOIN g.category c LEFT JOIN GoodsReview r ON r.goods.id = g.id " +
-           "WHERE g.status = 'APPROVED'")
-    List<ExcelReportDto> getInventorySummary();
-
-    @Query("SELECT new org.policy.dto.ExcelReportDto(g.name, c.name, g.status, r.comment, null, null) " +
-           "FROM GoodsReview r JOIN r.goods g JOIN g.category c " +
-           "WHERE r.status = 'REJECTED'")
-    List<ExcelReportDto> getRejectedGoods();
-}
-
-
----
-
-3. ExcelReportService.java
-
-package org.policy.service;
-
-import lombok.RequiredArgsConstructor;
-import org.policy.dto.ExcelReportDto;
-import org.policy.repository.ExcelReportRepository;
-import org.policy.util.ExcelGenerator;
-import org.springframework.stereotype.Service;
-
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.List;
-
-@Service
-@RequiredArgsConstructor
-public class ExcelReportService {
-
-    private final ExcelReportRepository repository;
-
-    public void exportExcel(HttpServletResponse response) throws IOException {
-        List<ExcelReportDto> inventory = repository.getInventorySummary();
-        List<ExcelReportDto> rejected = repository.getRejectedGoods();
-        ExcelGenerator.generateReport(inventory, rejected, response);
-    }
-}
-
-
----
-
-4. ExcelGenerator.java
-
-package org.policy.util;
-
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.policy.dto.ExcelReportDto;
-
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.List;
-
-public class ExcelGenerator {
-
-    public static void generateReport(List<ExcelReportDto> inventory, List<ExcelReportDto> rejected, HttpServletResponse response) throws IOException {
-        Workbook workbook = new XSSFWorkbook();
-
-        Sheet sheet1 = workbook.createSheet("Inventory Summary");
-        Sheet sheet2 = workbook.createSheet("Rejected Goods");
-
-        createHeader(sheet1);
-        createHeader(sheet2);
-
-        fillData(sheet1, inventory);
-        fillData(sheet2, rejected);
-
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=Inventory_Report.xlsx");
-
-        workbook.write(response.getOutputStream());
-        workbook.close();
-    }
-
-    private static void createHeader(Sheet sheet) {
-        Row header = sheet.createRow(0);
-        String[] titles = {"Goods Name", "Category", "Status", "Comment", "Warehouse Location", "Quantity"};
-        for (int i = 0; i < titles.length; i++) {
-            header.createCell(i).setCellValue(titles[i]);
-        }
-    }
-
-    private static void fillData(Sheet sheet, List<ExcelReportDto> data) {
-        int rowNum = 1;
-        for (ExcelReportDto dto : data) {
-            Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(dto.getGoodsName());
-            row.createCell(1).setCellValue(dto.getCategoryName());
-            row.createCell(2).setCellValue(dto.getStatus());
-            row.createCell(3).setCellValue(dto.getComment() != null ? dto.getComment() : "");
-            row.createCell(4).setCellValue(dto.getWarehouseLocation() != null ? dto.getWarehouseLocation() : "");
-            row.createCell(5).setCellValue(dto.getQuantity() != null ? dto.getQuantity() : 0);
-        }
-    }
-}
-
-
----
-
-5. ExcelReportController.java
-
-package org.policy.controller;
-
-import lombok.RequiredArgsConstructor;
-import org.policy.service.ExcelReportService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-
-@RestController
-@RequestMapping("/api/admin/excel-report")
-@RequiredArgsConstructor
-public class ExcelReportController {
-
-    private final ExcelReportService service;
-
-    @GetMapping
-    public void downloadExcel(HttpServletResponse response) throws IOException {
-        service.exportExcel(response);
-    }
-}
-
-
----
-
-6. Dependencies Required in pom.xml
-
-<dependency>
-    <groupId>org.apache.poi</groupId>
-    <artifactId>poi-ooxml</artifactId>
-    <version>5.2.2</version>
-</dependency>
-
-
----
-
-Let me know if you want the frontend Download button implementation too.
-
-
+Liquibase ChangeSet for Inventory Table
+
+Make sure this table exists if not created yet:
+
+<changeSet id="create-inventory-table" author="admin">
+    <createTable tableName="inventory">
+        <column name="id" type="BIGINT" autoIncrement="true">
+            <constraints primaryKey="true"/>
+        </column>
+        <column name="goods_id" type="BIGINT"/>
+        <column name="quantity" type="INT"/>
+        <column name="warehouse_location" type="VARCHAR(255)"/>
+        <column name="date_added" type="DATE"/>
+    </createTable>
+    <addForeignKeyConstraint baseTableName="inventory"
+                             baseColumnNames="goods_id"
+                             referencedTableName="goods"
+                             referencedColumnNames="id"
+                             constraintName="fk_inventory_goods"/>
+</changeSet>
+
+Let me know if you want the frontend download button implementation as well.
 
