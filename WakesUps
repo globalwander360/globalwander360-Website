@@ -1,4 +1,18 @@
-Here is the complete backend structure and full source code for Day 8: Excel Report Generation (Admin) using Spring Boot and Apache POI, with H2 and Liquibase setup:
+Thanks! Based on your request, here is the updated and complete backend source code for Day 8 with these changes:
+
+Excel download includes both sheets (Inventory Summary & Rejected Goods).
+
+Two separate APIs:
+
+/api/excel-report/inventory-summary
+
+/api/excel-report/rejected-goods
+
+
+One download API: /api/excel-report/download
+
+Updated DTOs, Controller, and Service logic to support both use cases independently and combined.
+
 
 
 ---
@@ -11,18 +25,19 @@ src/main/java/org/policy/
 ├── service/
 │   └── ExcelReportService.java
 ├── dto/
-│   └── ExcelReportDto.java
+│   ├── InventorySummaryDto.java
+│   └── RejectedGoodsDto.java
 ├── repository/
-│   └── InventoryRepository.java
+│   ├── InventoryRepository.java
 │   └── GoodsReviewRepository.java
 ├── entity/
-│   └── Inventory.java
+│   ├── Inventory.java
 │   └── GoodsReview.java
 
 
 ---
 
-1. ExcelReportDto.java
+1. InventorySummaryDto.java
 
 package org.policy.dto;
 
@@ -33,7 +48,7 @@ import java.time.LocalDate;
 
 @Data
 @AllArgsConstructor
-public class ExcelReportDto {
+public class InventorySummaryDto {
     private String goodsName;
     private String categoryName;
     private Integer quantity;
@@ -44,11 +59,31 @@ public class ExcelReportDto {
 
 ---
 
-2. InventoryRepository.java
+2. RejectedGoodsDto.java
+
+package org.policy.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+import java.time.LocalDate;
+
+@Data
+@AllArgsConstructor
+public class RejectedGoodsDto {
+    private Long goodsId;
+    private String comment;
+    private LocalDate reviewDate;
+}
+
+
+---
+
+3. InventoryRepository.java
 
 package org.policy.repository;
 
-import org.policy.dto.ExcelReportDto;
+import org.policy.dto.InventorySummaryDto;
 import org.policy.entity.Inventory;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -57,15 +92,15 @@ import java.util.List;
 
 public interface InventoryRepository extends CrudRepository<Inventory, Long> {
 
-    @Query("SELECT new org.policy.dto.ExcelReportDto(g.name, c.name, i.quantity, i.warehouseLocation, i.dateAdded) " +
+    @Query("SELECT new org.policy.dto.InventorySummaryDto(g.name, c.name, i.quantity, i.warehouseLocation, i.dateAdded) " +
            "FROM Inventory i JOIN i.goods g JOIN g.category c")
-    List<ExcelReportDto> getInventorySummary();
+    List<InventorySummaryDto> getInventorySummary();
 }
 
 
 ---
 
-3. GoodsReviewRepository.java
+4. GoodsReviewRepository.java
 
 package org.policy.repository;
 
@@ -84,14 +119,15 @@ public interface GoodsReviewRepository extends CrudRepository<GoodsReview, Long>
 
 ---
 
-4. ExcelReportService.java
+5. ExcelReportService.java
 
 package org.policy.service;
 
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.policy.dto.ExcelReportDto;
+import org.policy.dto.InventorySummaryDto;
+import org.policy.dto.RejectedGoodsDto;
 import org.policy.entity.GoodsReview;
 import org.policy.repository.GoodsReviewRepository;
 import org.policy.repository.InventoryRepository;
@@ -100,6 +136,7 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -108,9 +145,23 @@ public class ExcelReportService {
     private final InventoryRepository inventoryRepository;
     private final GoodsReviewRepository reviewRepository;
 
+    public List<InventorySummaryDto> getInventorySummary() {
+        return inventoryRepository.getInventorySummary();
+    }
+
+    public List<RejectedGoodsDto> getRejectedGoods() {
+        return reviewRepository.findRejectedGoodsWithComments().stream()
+                .map(r -> new RejectedGoodsDto(
+                        r.getGoods().getId(),
+                        r.getComment(),
+                        r.getReviewDate()
+                ))
+                .collect(Collectors.toList());
+    }
+
     public ByteArrayInputStream generateExcelReport() throws Exception {
-        List<ExcelReportDto> inventoryList = inventoryRepository.getInventorySummary();
-        List<GoodsReview> rejectedGoods = reviewRepository.findRejectedGoodsWithComments();
+        List<InventorySummaryDto> inventoryList = getInventorySummary();
+        List<RejectedGoodsDto> rejectedGoods = getRejectedGoods();
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             // Sheet 1: Inventory Summary
@@ -123,7 +174,7 @@ public class ExcelReportService {
             }
 
             int rowIdx = 1;
-            for (ExcelReportDto item : inventoryList) {
+            for (InventorySummaryDto item : inventoryList) {
                 Row row = summarySheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(item.getGoodsName());
                 row.createCell(1).setCellValue(item.getCategoryName());
@@ -142,9 +193,9 @@ public class ExcelReportService {
             }
 
             rowIdx = 1;
-            for (GoodsReview r : rejectedGoods) {
+            for (RejectedGoodsDto r : rejectedGoods) {
                 Row row = rejectedSheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(r.getGoods().getId());
+                row.createCell(0).setCellValue(r.getGoodsId());
                 row.createCell(1).setCellValue(r.getComment());
                 row.createCell(2).setCellValue(r.getReviewDate().toString());
             }
@@ -158,11 +209,13 @@ public class ExcelReportService {
 
 ---
 
-5. ExcelReportController.java
+6. ExcelReportController.java
 
 package org.policy.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.policy.dto.InventorySummaryDto;
+import org.policy.dto.RejectedGoodsDto;
 import org.policy.service.ExcelReportService;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
@@ -170,12 +223,24 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/excel-report")
 @RequiredArgsConstructor
 public class ExcelReportController {
 
     private final ExcelReportService reportService;
+
+    @GetMapping("/inventory-summary")
+    public List<InventorySummaryDto> getInventorySummary() {
+        return reportService.getInventorySummary();
+    }
+
+    @GetMapping("/rejected-goods")
+    public List<RejectedGoodsDto> getRejectedGoods() {
+        return reportService.getRejectedGoods();
+    }
 
     @GetMapping("/download")
     public ResponseEntity<InputStreamResource> downloadExcelReport() throws Exception {
@@ -191,9 +256,7 @@ public class ExcelReportController {
 
 ---
 
-Liquibase ChangeSet for Inventory Table
-
-Make sure this table exists if not created yet:
+Liquibase Changeset for Inventory Table
 
 <changeSet id="create-inventory-table" author="admin">
     <createTable tableName="inventory">
@@ -212,5 +275,17 @@ Make sure this table exists if not created yet:
                              constraintName="fk_inventory_goods"/>
 </changeSet>
 
-Let me know if you want the frontend download button implementation as well.
+
+---
+
+This complete structure supports:
+
+Download of combined Excel report
+
+Separate API access to JSON data of Inventory Summary & Rejected Goods
+
+Clean modular DTO, service, and controller design
+
+
+Let me know if you want the Angular frontend download button or if you're ready to move on to Day 9.
 
