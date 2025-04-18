@@ -1,17 +1,10 @@
-Thanks! Based on your request, here is the updated and complete backend source code for Day 8 with these changes:
+Here is the complete backend structure and full updated source code for Day 10: Advanced Filtering and Pagination in your Inventory Management Module using Spring Boot, with support for:
 
-Excel download includes both sheets (Inventory Summary & Rejected Goods).
+Filtering: by GoodsStatus (enum), category, warehouse, and date range
 
-Two separate APIs:
+Pagination
 
-/api/excel-report/inventory-summary
-
-/api/excel-report/rejected-goods
-
-
-One download API: /api/excel-report/download
-
-Updated DTOs, Controller, and Service logic to support both use cases independently and combined.
+Sorting: by date, quantity, etc.
 
 
 
@@ -21,23 +14,60 @@ Backend Folder Structure
 
 src/main/java/org/policy/
 ├── controller/
-│   └── ExcelReportController.java
+│   └── InventoryController.java
 ├── service/
-│   └── ExcelReportService.java
+│   └── InventoryService.java
 ├── dto/
-│   ├── InventorySummaryDto.java
-│   └── RejectedGoodsDto.java
+│   ├── InventoryFilterRequest.java
+│   └── InventoryResponseDto.java
 ├── repository/
-│   ├── InventoryRepository.java
-│   └── GoodsReviewRepository.java
+│   └── InventoryRepository.java
 ├── entity/
 │   ├── Inventory.java
-│   └── GoodsReview.java
+│   └── GoodsStatus.java
 
 
 ---
 
-1. InventorySummaryDto.java
+1. GoodsStatus.java (Enum)
+
+package org.policy.entity;
+
+public enum GoodsStatus {
+    PENDING,
+    APPROVED,
+    REJECTED
+}
+
+
+---
+
+2. InventoryFilterRequest.java
+
+package org.policy.dto;
+
+import lombok.Data;
+import org.policy.entity.GoodsStatus;
+
+import java.time.LocalDate;
+
+@Data
+public class InventoryFilterRequest {
+    private GoodsStatus status;
+    private String category;
+    private String warehouse;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private String sortBy = "dateAdded";
+    private String sortDirection = "desc";
+    private int page = 0;
+    private int size = 10;
+}
+
+
+---
+
+3. InventoryResponseDto.java
 
 package org.policy.dto;
 
@@ -48,244 +78,139 @@ import java.time.LocalDate;
 
 @Data
 @AllArgsConstructor
-public class InventorySummaryDto {
+public class InventoryResponseDto {
     private String goodsName;
     private String categoryName;
     private Integer quantity;
     private String warehouseLocation;
     private LocalDate dateAdded;
+    private String status;
 }
 
 
 ---
 
-2. RejectedGoodsDto.java
-
-package org.policy.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-
-import java.time.LocalDate;
-
-@Data
-@AllArgsConstructor
-public class RejectedGoodsDto {
-    private Long goodsId;
-    private String comment;
-    private LocalDate reviewDate;
-}
-
-
----
-
-3. InventoryRepository.java
+4. InventoryRepository.java
 
 package org.policy.repository;
 
-import org.policy.dto.InventorySummaryDto;
 import org.policy.entity.Inventory;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-import java.util.List;
-
-public interface InventoryRepository extends CrudRepository<Inventory, Long> {
-
-    @Query("SELECT new org.policy.dto.InventorySummaryDto(g.name, c.name, i.quantity, i.warehouseLocation, i.dateAdded) " +
-           "FROM Inventory i JOIN i.goods g JOIN g.category c")
-    List<InventorySummaryDto> getInventorySummary();
+public interface InventoryRepository extends JpaRepository<Inventory, Long>, JpaSpecificationExecutor<Inventory> {
 }
 
 
 ---
 
-4. GoodsReviewRepository.java
-
-package org.policy.repository;
-
-import org.policy.entity.GoodsReview;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.CrudRepository;
-
-import java.util.List;
-
-public interface GoodsReviewRepository extends CrudRepository<GoodsReview, Long> {
-
-    @Query("SELECT r FROM GoodsReview r WHERE r.status = 'REJECTED'")
-    List<GoodsReview> findRejectedGoodsWithComments();
-}
-
-
----
-
-5. ExcelReportService.java
+5. InventoryService.java
 
 package org.policy.service;
 
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.policy.dto.InventorySummaryDto;
-import org.policy.dto.RejectedGoodsDto;
-import org.policy.entity.GoodsReview;
-import org.policy.repository.GoodsReviewRepository;
+import org.policy.dto.InventoryFilterRequest;
+import org.policy.dto.InventoryResponseDto;
+import org.policy.entity.Inventory;
+import org.policy.entity.GoodsStatus;
 import org.policy.repository.InventoryRepository;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import jakarta.persistence.criteria.Join;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class ExcelReportService {
+public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
-    private final GoodsReviewRepository reviewRepository;
 
-    public List<InventorySummaryDto> getInventorySummary() {
-        return inventoryRepository.getInventorySummary();
-    }
+    public Page<InventoryResponseDto> filterInventory(InventoryFilterRequest request) {
+        Specification<Inventory> spec = (root, query, cb) -> {
+            List<javax.persistence.criteria.Predicate> predicates = new ArrayList<>();
 
-    public List<RejectedGoodsDto> getRejectedGoods() {
-        return reviewRepository.findRejectedGoodsWithComments().stream()
-                .map(r -> new RejectedGoodsDto(
-                        r.getGoods().getId(),
-                        r.getComment(),
-                        r.getReviewDate()
-                ))
-                .collect(Collectors.toList());
-    }
-
-    public ByteArrayInputStream generateExcelReport() throws Exception {
-        List<InventorySummaryDto> inventoryList = getInventorySummary();
-        List<RejectedGoodsDto> rejectedGoods = getRejectedGoods();
-
-        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            // Sheet 1: Inventory Summary
-            Sheet summarySheet = workbook.createSheet("Inventory Summary");
-            Row headerRow = summarySheet.createRow(0);
-            String[] headers = {"Goods Name", "Category", "Quantity", "Warehouse Location", "Date Added"};
-
-            for (int i = 0; i < headers.length; i++) {
-                headerRow.createCell(i).setCellValue(headers[i]);
+            if (request.getStatus() != null) {
+                predicates.add(cb.equal(root.get("goods").get("status"), request.getStatus()));
             }
 
-            int rowIdx = 1;
-            for (InventorySummaryDto item : inventoryList) {
-                Row row = summarySheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(item.getGoodsName());
-                row.createCell(1).setCellValue(item.getCategoryName());
-                row.createCell(2).setCellValue(item.getQuantity());
-                row.createCell(3).setCellValue(item.getWarehouseLocation());
-                row.createCell(4).setCellValue(item.getDateAdded().toString());
+            if (request.getCategory() != null) {
+                Join<Object, Object> category = root.get("goods").join("category");
+                predicates.add(cb.equal(category.get("name"), request.getCategory()));
             }
 
-            // Sheet 2: Rejected Goods
-            Sheet rejectedSheet = workbook.createSheet("Rejected Goods");
-            Row rejectedHeader = rejectedSheet.createRow(0);
-            String[] rejectHeaders = {"Goods ID", "Comment", "Review Date"};
-
-            for (int i = 0; i < rejectHeaders.length; i++) {
-                rejectedHeader.createCell(i).setCellValue(rejectHeaders[i]);
+            if (request.getWarehouse() != null) {
+                predicates.add(cb.equal(root.get("warehouseLocation"), request.getWarehouse()));
             }
 
-            rowIdx = 1;
-            for (RejectedGoodsDto r : rejectedGoods) {
-                Row row = rejectedSheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(r.getGoodsId());
-                row.createCell(1).setCellValue(r.getComment());
-                row.createCell(2).setCellValue(r.getReviewDate().toString());
+            if (request.getStartDate() != null && request.getEndDate() != null) {
+                predicates.add(cb.between(root.get("dateAdded"), request.getStartDate(), request.getEndDate()));
             }
 
-            workbook.write(out);
-            return new ByteArrayInputStream(out.toByteArray());
-        }
+            return cb.and(predicates.toArray(new javax.persistence.criteria.Predicate[0]));
+        };
+
+        Sort sort = Sort.by(Sort.Direction.fromString(request.getSortDirection()), request.getSortBy());
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
+
+        return inventoryRepository.findAll(spec, pageable).map(i -> new InventoryResponseDto(
+                i.getGoods().getName(),
+                i.getGoods().getCategory().getName(),
+                i.getQuantity(),
+                i.getWarehouseLocation(),
+                i.getDateAdded(),
+                i.getGoods().getStatus().toString()
+        ));
     }
 }
 
 
 ---
 
-6. ExcelReportController.java
+6. InventoryController.java
 
 package org.policy.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.policy.dto.InventorySummaryDto;
-import org.policy.dto.RejectedGoodsDto;
-import org.policy.service.ExcelReportService;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.policy.dto.InventoryFilterRequest;
+import org.policy.dto.InventoryResponseDto;
+import org.policy.service.InventoryService;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/api/excel-report")
+@RequestMapping("/api/inventory")
 @RequiredArgsConstructor
-public class ExcelReportController {
+public class InventoryController {
 
-    private final ExcelReportService reportService;
+    private final InventoryService inventoryService;
 
-    @GetMapping("/inventory-summary")
-    public List<InventorySummaryDto> getInventorySummary() {
-        return reportService.getInventorySummary();
-    }
-
-    @GetMapping("/rejected-goods")
-    public List<RejectedGoodsDto> getRejectedGoods() {
-        return reportService.getRejectedGoods();
-    }
-
-    @GetMapping("/download")
-    public ResponseEntity<InputStreamResource> downloadExcelReport() throws Exception {
-        var stream = reportService.generateExcelReport();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=report.xlsx")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(new InputStreamResource(stream));
+    @PostMapping("/filter")
+    public Page<InventoryResponseDto> filterInventory(@RequestBody InventoryFilterRequest request) {
+        return inventoryService.filterInventory(request);
     }
 }
 
 
 ---
 
-Liquibase Changeset for Inventory Table
+Liquibase Reminder
 
-<changeSet id="create-inventory-table" author="admin">
-    <createTable tableName="inventory">
-        <column name="id" type="BIGINT" autoIncrement="true">
-            <constraints primaryKey="true"/>
-        </column>
-        <column name="goods_id" type="BIGINT"/>
-        <column name="quantity" type="INT"/>
-        <column name="warehouse_location" type="VARCHAR(255)"/>
-        <column name="date_added" type="DATE"/>
-    </createTable>
-    <addForeignKeyConstraint baseTableName="inventory"
-                             baseColumnNames="goods_id"
-                             referencedTableName="goods"
-                             referencedColumnNames="id"
-                             constraintName="fk_inventory_goods"/>
-</changeSet>
+Ensure your inventory table and related goods, category fields are correctly created in H2 via Liquibase.
 
 
 ---
 
-This complete structure supports:
+Let me know if you want:
 
-Download of combined Excel report
+Angular frontend filters + pagination UI
 
-Separate API access to JSON data of Inventory Summary & Rejected Goods
+Full Liquibase changesets for goods, category, and inventory
 
-Clean modular DTO, service, and controller design
+Test data for H2
 
 
-Let me know if you want the Angular frontend download button or if you're ready to move on to Day 9.
-
+Or if you'd like Day 11 planning!
