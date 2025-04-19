@@ -1,16 +1,16 @@
-Here is the complete backend structure and full source code for your Authentication module with all required validations added. This version does not include Spring Security configuration as per your request.
+Thanks! I’ve updated that. Here’s your updated authentication backend structure and full source code without name, without Spring Security, and with proper validation.
 
 
 ---
 
-Project Structure
+Backend Folder Structure
 
 src/main/java/org/policy/
 ├── controller/
 │   └── AuthController.java
 ├── dto/
-│   ├── RegisterRequest.java
 │   ├── LoginRequest.java
+│   ├── RegisterRequest.java
 │   └── AuthResponse.java
 ├── entity/
 │   └── AppUser.java
@@ -22,7 +22,195 @@ src/main/java/org/policy/
 
 ---
 
-1. AuthController.java
+1. AppUser.java
+
+package org.policy.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class AppUser {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Enumerated(EnumType.STRING)
+    private Role role;
+}
+
+
+---
+
+2. Role.java
+
+package org.policy.entity;
+
+public enum Role {
+    ADMIN,
+    USER,
+    LOGISTICS_COORDINATOR
+}
+
+
+---
+
+3. RegisterRequest.java
+
+package org.policy.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+
+@Data
+public class RegisterRequest {
+
+    @Email(message = "Email should be valid")
+    @NotBlank(message = "Email is required")
+    private String email;
+
+    @NotBlank(message = "Password is required")
+    @Size(min = 6, message = "Password must be at least 6 characters")
+    private String password;
+
+    @NotBlank(message = "Role is required")
+    private String role;
+}
+
+
+---
+
+4. LoginRequest.java
+
+package org.policy.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
+@Data
+public class LoginRequest {
+
+    @Email(message = "Invalid email format")
+    @NotBlank(message = "Email is required")
+    private String email;
+
+    @NotBlank(message = "Password is required")
+    private String password;
+}
+
+
+---
+
+5. AuthResponse.java
+
+package org.policy.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
+public class AuthResponse {
+    private String message;
+    private String email;
+    private String role;
+}
+
+
+---
+
+6. UserRepository.java
+
+package org.policy.repository;
+
+import org.policy.entity.AppUser;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<AppUser, Long> {
+    Optional<AppUser> findByEmail(String email);
+}
+
+
+---
+
+7. AuthService.java
+
+package org.policy.service;
+
+import lombok.RequiredArgsConstructor;
+import org.policy.dto.*;
+import org.policy.entity.AppUser;
+import org.policy.entity.Role;
+import org.policy.repository.UserRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final UserRepository userRepository;
+
+    public AuthResponse register(RegisterRequest request) {
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");
+        }
+
+        Role role = Role.valueOf(request.getRole().toUpperCase());
+
+        AppUser user = AppUser.builder()
+                .email(request.getEmail())
+                .password(request.getPassword()) // Note: Store securely in real apps
+                .role(role)
+                .build();
+
+        userRepository.save(user);
+
+        return new AuthResponse("Registration successful", user.getEmail(), user.getRole().name());
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        AppUser user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
+
+        if (!user.getPassword().equals(request.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        }
+
+        return new AuthResponse("Login successful", user.getEmail(), user.getRole().name());
+    }
+
+    public AppUser getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    public java.util.List<AppUser> getAllUsers() {
+        return userRepository.findAll();
+    }
+}
+
+
+---
+
+8. AuthController.java
 
 package org.policy.controller;
 
@@ -67,188 +255,14 @@ public class AuthController {
 
 ---
 
-2. RegisterRequest.java
+Let me know if you want:
 
-package org.policy.dto;
+Corresponding Liquibase changeset for app_user table
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
-import lombok.Data;
+Angular frontend to consume this
 
-@Data
-public class RegisterRequest {
-
-    @NotBlank(message = "Name is required")
-    private String name;
-
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
-    private String email;
-
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters long")
-    private String password;
-
-    @NotBlank(message = "Role is required")
-    @Pattern(regexp = "^(ADMIN|USER|LOGISTICS_COORDINATOR)$", message = "Role must be ADMIN, USER, or LOGISTICS_COORDINATOR")
-    private String role;
-}
+Password hashing (recommended in production)
 
 
----
-
-3. LoginRequest.java
-
-package org.policy.dto;
-
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
-
-@Data
-public class LoginRequest {
-
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
-    private String email;
-
-    @NotBlank(message = "Password is required")
-    private String password;
-}
-
-
----
-
-4. AuthResponse.java
-
-package org.policy.dto;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-
-@Data
-@AllArgsConstructor
-public class AuthResponse {
-    private String message;
-    private String email;
-    private String role;
-}
-
-
----
-
-5. AppUser.java
-
-package org.policy.entity;
-
-import jakarta.persistence.*;
-import lombok.*;
-
-@Entity
-@Table(name = "app_user")
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class AppUser {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String name;
-
-    @Column(unique = true)
-    private String email;
-
-    private String password;
-
-    private String role;
-}
-
-
----
-
-6. UserRepository.java
-
-package org.policy.repository;
-
-import org.policy.entity.AppUser;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.Optional;
-
-public interface UserRepository extends JpaRepository<AppUser, Long> {
-    Optional<AppUser> findByEmail(String email);
-}
-
-
----
-
-7. AuthService.java
-
-package org.policy.service;
-
-import lombok.RequiredArgsConstructor;
-import org.policy.dto.*;
-import org.policy.entity.AppUser;
-import org.policy.repository.UserRepository;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-
-@Service
-@RequiredArgsConstructor
-public class AuthService {
-
-    private final UserRepository userRepository;
-
-    public AuthResponse register(RegisterRequest request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already registered");
-        }
-
-        AppUser user = AppUser.builder()
-                .name(request.getName())
-                .email(request.getEmail())
-                .password(request.getPassword())
-                .role(request.getRole())
-                .build();
-
-        userRepository.save(user);
-
-        return new AuthResponse("User registered successfully", user.getEmail(), user.getRole());
-    }
-
-    public AuthResponse login(LoginRequest request) {
-        AppUser user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!user.getPassword().equals(request.getPassword())) {
-            throw new RuntimeException("Invalid credentials");
-        }
-
-        return new AuthResponse("Login successful", user.getEmail(), user.getRole());
-    }
-
-    public AppUser getUserById(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
-
-    public List<AppUser> getAllUsers() {
-        return userRepository.findAll();
-    }
-}
-
-
----
-
-Optional: Liquibase Changeset for app_user Table
-
-Let me know if you want the Liquibase XML for creating the app_user table.
-
-Would you like me to now move to the frontend side and generate the Angular code for Register/Login pages?
+Or if you’re ready for the next module!
 
